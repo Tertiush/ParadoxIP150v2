@@ -797,7 +797,6 @@ if __name__ == '__main__':
             except Exception, e:
                 print "******************* Error reading config.ini file (will use defaults): " + repr(e)
                 State_Machine = 1
-
                 attempts = 3
         # -------------- MQTT ----------------
         elif State_Machine == 1:
@@ -829,8 +828,7 @@ if __name__ == '__main__':
                     print "Error within State_Machine: " + str(State_Machine) + ": " + repr(e)
                     State_Machine -= 1
                     print "Going to State_Machine: " + str(State_Machine)
-
-            attempts = 5
+                    attempts = 3
 
         # -------------- Login to IP Module ----------------
         elif State_Machine == 2 and Polling_Enabled == 1:
@@ -855,8 +853,7 @@ if __name__ == '__main__':
                     print "Error within State_Machine: " + str(State_Machine) + ": " + repr(e)
                     State_Machine -= 1
                     print "Going to State_Machine: " + str(State_Machine)
-
-            attempts = 3
+                    attempts = 3
         # -------------- Reading Labels ----------------
         elif State_Machine == 3 and Polling_Enabled == 1:
 
@@ -933,6 +930,7 @@ if __name__ == '__main__':
                     print "Error within State_Machine: " + str(State_Machine) + ": " + repr(e)
                     State_Machine -= 1
                     print "Going to State_Machine: " + str(State_Machine)
+                    attempts = 3
 
 
         elif Polling_Enabled == 0 and State_Machine <= 4:
