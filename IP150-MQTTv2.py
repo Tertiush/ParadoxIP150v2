@@ -384,7 +384,8 @@ class paradox:
                         print "Failed to load supported function's completed mappings after updating: ", repr(e)
 
                 if Startup_Publish_All_Info == "True":
-                    client.publish(Topic_Publish_Labels + "/Zones", ';'.join('{}{}'.format(key, ":" + val) for key, val in myAlarm.eventmap.getAllzoneLabel().items()))
+                    topic = func.split("Label")[0]
+                    client.publish(Topic_Publish_Labels + "/" + topic[0].upper() + topic[1:] + "s", ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()))
 
 
             except Exception, e:
