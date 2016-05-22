@@ -1,6 +1,8 @@
 # Paradox IP150-MQTTv2
 Python-based IP150 'middle-ware' that uses the IP module's software port for monitoring and control of the alarm via an MQTT Broker.
 
+The script was designed to be extendable to support more alarm types. See the ParadoxMap.py file for details. If you want to do some tcp dump of your alarm model to add into there, get Paradox's Winload software. Then within it's root folder find a file called COM.ini and change the 'IPEncrypted' setting to FALSE. You can then use WireShark (or equivalent) to trap whatever commands/replies you want to and either extend the ParadoxMap.py's existing dictionaries or add in a complete new Class for another alarm type.
+
 <b>NB: This is still a very early release and has its bugs. Feel free to submit a PR, any help is appreciated, even if its for my bad grammer/spelling!</b>
 
 ## Steps to use it:
