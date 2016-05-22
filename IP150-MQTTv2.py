@@ -317,7 +317,7 @@ class paradox:
 
         return message
 
-    def updateAllLabels(self, Debug_Mode = 0):
+    def updateAllLabels(self, Startup_Publish_All_Info = "True", Topic_Publish_Labels = "True", Debug_Mode = 0):
 
         for func in self.registermap.getsupportedItems():
 
@@ -382,6 +382,10 @@ class paradox:
                         print completed_dict
                     except Exception, e:
                         print "Failed to load supported function's completed mappings after updating: ", repr(e)
+
+                if Startup_Publish_All_Info == "True":
+                    client.publish(Topic_Publish_Labels + "/Zones", ';'.join('{}{}'.format(key, ":" + val) for key, val in myAlarm.eventmap.getAllzoneLabel().items()))
+
 
             except Exception, e:
                 print "Failed to load supported function's mapping: ", repr(e)
@@ -758,7 +762,7 @@ if __name__ == '__main__':
                 if Startup_Update_All_Labels == "True" and myAlarm.skipLabelUpdate() == 0:
 
                     print "Updating all labels from alarm"
-                    myAlarm.updateAllLabels(Debug_Mode)
+                    myAlarm.updateAllLabels(Startup_Publish_All_Info, Topic_Publish_Labels,Debug_Mode)
 
                     State_Machine += 1
                     print "Listening for events..."
