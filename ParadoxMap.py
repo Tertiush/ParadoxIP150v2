@@ -1,3 +1,20 @@
+"""
+This package is statically programmed and dynamically refernce in from the main script.
+
+Within the config.ini file your "Alarm_Registry_Map" and "Alarm_Event_Map" values are appended
+with "Registers()" and "EventMap" respectively to load the correct classes for your alarm.
+
+To enable the updating of label names to those configured in your alarm, update the "SupportedItems"
+dictionary in the ..."Registers" Class below. The main script will iterate through this list and dynamically
+build the relevant get and set functions from the Registers and EventMap classes to update the values
+it publishes.
+
+For this reason (dynamic build of function names) the function names listed in the "supportedItems" dictionary
+must be an exact (case-sensitive) replica of the relevant functions to interact with its dictionaries.
+"""
+
+
+
 
 
 """
@@ -6,7 +23,21 @@ MG5050: This class maps all MG5050 V4.xx register to labels or output actions
 
 class ParadoxMG5050Registers():
 
-    zoneLabels = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
+    # Link different registry mappings here to event label entries, note that functions to
+    # poll & retrieve these externally must be structure as get/set/getall in the respctive classes
+    # with names that exactly match the "supportedItems" below and dictionary names.
+    supportedItems = {"zoneLabel",
+                      "outputLabel",
+                      "partitionLabel",
+                      "userLabel",
+                      "busModuleLabel",
+                      "wirelessRepeaterLabel",
+                      "wirelessSirenLabel",
+                      "wirelessKeypadLabel",
+                      "siteNameLabel"
+                      }
+
+    zoneLabel = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
                   1: {"Send": "\x50\x00\x00\x10", "Receive": {"Start": 20, "Finish": 36}},   # I.e. get data from register \x50000010, extract text from posisiton 20 to 36
                   2: {"Send": "\x50\x00\x00\x10", "Receive": {"Start": 36, "Finish": 52}},
                   3: {"Send": "\x50\x00\x00\x30", "Receive": {"Start": 20, "Finish": 36}},
@@ -41,7 +72,7 @@ class ParadoxMG5050Registers():
                   32: {"Send": "\x50\x00\x01\xf0", "Receive": {"Start": 36, "Finish": 52}},
                   }
 
-    outputLabels = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
+    outputLabel = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
                     1: {"Send": "\x50\x00\x02\x10", "Receive": {"Start": 20, "Finish": 36}},
                     2: {"Send": "\x50\x00\x02\x10", "Receive": {"Start": 36, "Finish": 52}},
                     3: {"Send": "\x50\x00\x02\x30", "Receive": {"Start": 20, "Finish": 36}},
@@ -60,13 +91,13 @@ class ParadoxMG5050Registers():
                     16: {"Send": "\x50\x00\x02\xf0", "Receive": {"Start": 36, "Finish": 52}}
                     }
 
-    partitionLabels = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
+    partitionLabel = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
                        1: {"Send": "\x50\x00\x03\x10", "Receive": {"Start": 20, "Finish": 36}},
                        2: {"Send": "\x50\x00\x03\x10", "Receive": {"Start": 36, "Finish": 52}}
                        }
 
 
-    userLabels = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
+    userLabel = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
                   1: {"Send": "\x50\x00\x03\x30", "Receive": {"Start": 20, "Finish": 36}},
                   2: {"Send": "\x50\x00\x03\x30", "Receive": {"Start": 36, "Finish": 52}},
                   3: {"Send": "\x50\x00\x03\x50", "Receive": {"Start": 20, "Finish": 36}},
@@ -101,7 +132,7 @@ class ParadoxMG5050Registers():
                   32: {"Send": "\x50\x00\x05\x10", "Receive": {"Start": 36, "Finish": 52}},
                   }
 
-    busModuleLabels = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
+    busModuleLabel = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
                        1: {"Send": "\x50\x00\x05\x30", "Receive": {"Start": 20, "Finish": 36}},
                        2: {"Send": "\x50\x00\x05\x30", "Receive": {"Start": 36, "Finish": 52}},
                        3: {"Send": "\x50\x00\x05\x50", "Receive": {"Start": 20, "Finish": 36}},
@@ -119,12 +150,12 @@ class ParadoxMG5050Registers():
                        15: {"Send": "\x50\x00\x06\x10", "Receive": {"Start": 20, "Finish": 36}},
                        }
 
-    wirelessRepeaterLabels = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
+    wirelessRepeaterLabel = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
                               1: {"Send": "\x50\x00\x06\x10", "Receive": {"Start": 36, "Finish": 52}},
                               2: {"Send": "\x50\x00\x06\x30", "Receive": {"Start": 20, "Finish": 36}}
                               }
 
-    wirelessKeypadLabels = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
+    wirelessKeypadLabel = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
                             1: {"Send": "\x50\x00\x06\x30", "Receive": {"Start": 36, "Finish": 52}},
                             2: {"Send": "\x50\x00\x06\x50", "Receive": {"Start": 20, "Finish": 36}},
                             3: {"Send": "\x50\x00\x06\x50", "Receive": {"Start": 36, "Finish": 52}},
@@ -135,18 +166,18 @@ class ParadoxMG5050Registers():
                             8: {"Send": "\x50\x00\x06\xb0", "Receive": {"Start": 20, "Finish": 36}}
                             }
 
-    siteName = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
-                1: {"Send": "\x50\x00\x06\xb0", "Receive": {"Start": 36, "Finish": 52}}
-                }
+    siteNameLabel = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
+                     1: {"Send": "\x50\x00\x06\xb0", "Receive": {"Start": 36, "Finish": 52}}
+                     }
 
-    wirelessSirenLabels = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
+    wirelessSirenLabel = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
                            1: {"Send": "\x50\x00\x06\xd0", "Receive": {"Start": 20, "Finish": 36}},
                            2: {"Send": "\x50\x00\x06\xd0", "Receive": {"Start": 36, "Finish": 52}},
                            3: {"Send": "\x50\x00\x06\xf0", "Receive": {"Start": 20, "Finish": 36}},
                            4: {"Send": "\x50\x00\x06\xf0", "Receive": {"Start": 36, "Finish": 52}}
                            }
 
-    controlOutputs = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
+    controlOutput = {"Header": "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee",
                       1: {"ON": "\x40\x00\x30\x00", "OFF": "\x40\x00\x31\x00"},
                       2: {"ON": "\x40\x00\x30\x01", "OFF": "\x40\x00\x31\x01"},
                       3: {"ON": "\x40\x00\x30\x02", "OFF": "\x40\x00\x31\x02"},
@@ -171,59 +202,62 @@ class ParadoxMG5050Registers():
 
 
     @staticmethod
-    def getZoneLabelRegisters():
-        return ParadoxMG5050Registers.zoneLabels
+    def getzoneLabelRegister():
+        return ParadoxMG5050Registers.zoneLabel
 
     @staticmethod
-    def getPartitionLabelRegisters():
-        return ParadoxMG5050Registers.partitionLabels
+    def getpartitionLabelRegister():
+        return ParadoxMG5050Registers.partitionLabel
 
     @staticmethod
-    def getUserLabelRegisters():
-        return ParadoxMG5050Registers.userLabels
+    def getuserLabelRegister():
+        return ParadoxMG5050Registers.userLabel
 
     @staticmethod
-    def getBusModuleLabelRegisters():
-        return ParadoxMG5050Registers.busModuleLabels
+    def getbusModuleLabelRegister():
+        return ParadoxMG5050Registers.busModuleLabel
 
     @staticmethod
-    def getWirelessRepeaterLabelRegisters():
-        return ParadoxMG5050Registers.wirelessRepeaterLabels
+    def getwirelessRepeaterLabelRegister():
+        return ParadoxMG5050Registers.wirelessRepeaterLabel
 
     @staticmethod
-    def getWirelessKeypadLabelRegisters():
-        return ParadoxMG5050Registers.wirelessKeypadLabels
+    def getwirelessKeypadLabelRegister():
+        return ParadoxMG5050Registers.wirelessKeypadLabel
 
     @staticmethod
-    def getSiteNameRegisters():
-        return ParadoxMG5050Registers.siteName
+    def getsiteNameLabelRegister():
+        return ParadoxMG5050Registers.siteNameLabel
 
     @staticmethod
-    def getWirelessSirenLabelRegisters():
-        return ParadoxMG5050Registers.wirelessSirenLabels
+    def getwirelessSirenLabelRegister():
+        return ParadoxMG5050Registers.wirelessSirenLabel
 
     @staticmethod
-    def getOutputLabelRegisters():
+    def getoutputLabelRegister():
         # try:
-        return ParadoxMG5050Registers.outputLabels
+        return ParadoxMG5050Registers.outputLabel
     
     @staticmethod
-    def getControlOutputRegisters():
+    def getcontrolOutputRegister():
         # try:
-        return ParadoxMG5050Registers.controlOutputs
+        return ParadoxMG5050Registers.controlOutput
+
+    @staticmethod
+    def getcontrolAlarmRegister():
+        # try:
+        return ParadoxMG5050Registers.controlAlarm
 
 
     @staticmethod
-    def getAlarmRegisters():
+    def getsupportedItems():
         # try:
-        return ParadoxMG5050Registers.controlAlarm
+        return ParadoxMG5050Registers.supportedItems
 """
 MG5050: This class is used for reporting events. The generic names for grouped items will be
-updated if a correspondig register location is goven in the Registers class
-See: http://www.imotionsecurite.com/pdf/paradox/MGSP-EP20.pdf
+updated if a corresponding register location is given in the Registers class
+See: E.g. the mappings for an MG5050: http://www.imotionsecurite.com/pdf/paradox/MGSP-EP20.pdf
 """
-
-import pickle
 
 class ParadoxMG5050EventMap():
 
@@ -294,7 +328,7 @@ class ParadoxMG5050EventMap():
                      64: 'System Status'
                      }
 
-    _zoneNumber = {1: 'Zone 1',
+    _zoneLabel = {1: 'Zone 1',
                    2: 'Zone 2',
                    3: 'Zone 3',
                    4: 'Zone 4',
@@ -383,7 +417,7 @@ class ParadoxMG5050EventMap():
                             26: 'GPRS Registration status change',
                             99: 'Any non-reportable event'}
 
-    _userNumber = {1: 'User Number 1',
+    _userLabel = {1: 'User Number 1',
                    2: 'User Number 2',
                    3: 'User Number 3',
                    4: 'User Number 4',
@@ -417,7 +451,7 @@ class ParadoxMG5050EventMap():
                    32: 'User Number 32'
                    }
 
-    _remoteNumber = {1: 'Remote control number 1',
+    _remoteLabel = {1: 'Remote control number 1',
                      2: 'Remote control number 2',
                      3: 'Remote control number 3',
                      4: 'Remote control number 4',
@@ -544,7 +578,7 @@ class ParadoxMG5050EventMap():
                        99: 'Any software access'
                        }
 
-    _pgmNumber = {1: 'PGM Number 1',
+    _outputLabel = {1: 'PGM Number 1',
                   2: 'PGM Number 2',
                   3: 'PGM Number 3',
                   4: 'PGM Number 4',
@@ -620,22 +654,22 @@ class ParadoxMG5050EventMap():
                      5: 'PGM OFF if disarmed',
                      }
 
-    _eventOpt1 = {1: _pgmNumber[1],
-                  2: _pgmNumber[2],
-                  3: _pgmNumber[3],
-                  4: _pgmNumber[4],
-                  5: _pgmNumber[5],
-                  6: _pgmNumber[6],
-                  7: _pgmNumber[7],
-                  8: _pgmNumber[8],
-                  9: _pgmNumber[9],
-                  10: _pgmNumber[10],
-                  11: _pgmNumber[11],
-                  12: _pgmNumber[12],
-                  13: _pgmNumber[13],
-                  14: _pgmNumber[14],
-                  15: _pgmNumber[15],
-                  16: _pgmNumber[16],
+    _eventOpt1 = {1: _outputLabel[1],
+                  2: _outputLabel[2],
+                  3: _outputLabel[3],
+                  4: _outputLabel[4],
+                  5: _outputLabel[5],
+                  6: _outputLabel[6],
+                  7: _outputLabel[7],
+                  8: _outputLabel[8],
+                  9: _outputLabel[9],
+                  10: _outputLabel[10],
+                  11: _outputLabel[11],
+                  12: _outputLabel[12],
+                  13: _outputLabel[13],
+                  14: _outputLabel[14],
+                  15: _outputLabel[15],
+                  16: _outputLabel[16],
                   17: _wirelessRepeater[1],
                   18: _wirelessRepeater[2],
                   19: _wirelessKeypad[1],
@@ -650,71 +684,71 @@ class ParadoxMG5050EventMap():
                   }
 
     '''dictionary consisting of dictionary'''
-    subEventGroupMap = {0: _zoneNumber,
-                        1: _zoneNumber,
+    subEventGroupMap = {0: _zoneLabel,
+                        1: _zoneLabel,
                         2: _partitionStatus,
                         3: _bellStatus,
                         6: _nonReportableEvents,
-                        8: _remoteNumber,
-                        9: _remoteNumber,
-                        10: _remoteNumber,
-                        11: _remoteNumber,
-                        12: _zoneNumber,
+                        8: _remoteLabel,
+                        9: _remoteLabel,
+                        10: _remoteLabel,
+                        11: _remoteLabel,
+                        12: _zoneLabel,
                         13: _eventOpt1,
-                        14: _zoneNumber,
-                        15: _zoneNumber,
-                        16: _zoneNumber,
-                        17: _zoneNumber,
-                        18: _zoneNumber,
-                        19: _zoneNumber,
-                        20: _zoneNumber,
-                        21: _zoneNumber,
-                        22: _remoteNumber,
-                        23: _remoteNumber,
-                        24: _zoneNumber,
-                        # 25 :_zoneNumber,
+                        14: _zoneLabel,
+                        15: _zoneLabel,
+                        16: _zoneLabel,
+                        17: _zoneLabel,
+                        18: _zoneLabel,
+                        19: _zoneLabel,
+                        20: _zoneLabel,
+                        21: _zoneLabel,
+                        22: _remoteLabel,
+                        23: _remoteLabel,
+                        24: _zoneLabel,
+                        # 25 :_zoneLabel,
                         26: _softwareAccess,
                         27: _busModuleEvent,
-                        28: _zoneNumber,
-                        29: _userNumber,
+                        28: _zoneLabel,
+                        29: _userLabel,
                         30: _specialArming,
-                        31: _userNumber,
-                        32: _userNumber,
-                        33: _userNumber,
+                        31: _userLabel,
+                        32: _userLabel,
+                        33: _userLabel,
                         34: _specialDisarming,
-                        35: _zoneNumber,
-                        36: _zoneNumber,
-                        37: _zoneNumber,
-                        38: _zoneNumber,
-                        39: _zoneNumber,
+                        35: _zoneLabel,
+                        36: _zoneLabel,
+                        37: _zoneLabel,
+                        38: _zoneLabel,
+                        39: _zoneLabel,
                         40: _specialAlarm,
-                        41: _zoneNumber,
-                        42: _zoneNumber,
-                        43: _zoneNumber,
+                        41: _zoneLabel,
+                        42: _zoneLabel,
+                        43: _zoneLabel,
                         44: _newTrouble,
                         45: _troubleRestored,
                         46: _moduleTrouble,
                         47: _moduleTroubleRestore,
                         48: _special,
-                        49: _zoneNumber,
-                        50: _zoneNumber,
-                        51: _zoneNumber,
-                        52: _zoneNumber,
+                        49: _zoneLabel,
+                        50: _zoneLabel,
+                        51: _zoneLabel,
+                        52: _zoneLabel,
                         53: _eventOpt1,
                         54: _eventOpt1,
                         55: _eventOpt1,
                         56: _eventOpt1,
-                        57: _userNumber,
-                        58: _zoneNumber,
-                        59: _zoneNumber,
+                        57: _userLabel,
+                        58: _zoneLabel,
+                        59: _zoneLabel,
                         64: _systemStatus
                         }
 
-    _partitionLabels = {1: 'Partition 1',
+    _partitionLabel = {1: 'Partition 1',
                         2: 'Partition 2'
                         }
 
-    _busModuleLabels = {1: 'Bus Module 1',
+    _busModuleLabel = {1: 'Bus Module 1',
                         2: 'Bus Module 2',
                         3: 'Bus Module 3',
                         4: 'Bus Module 4',
@@ -731,7 +765,7 @@ class ParadoxMG5050EventMap():
                         15: 'Bus Module 15'
                         }
 
-    _siteName = {1: 'Site Name'}
+    _siteNameLabel = {1: 'Site Name'}
 
     '''mapping of Label Types'''
     labelTypeMap = {0: 'Zone Label',
@@ -772,268 +806,120 @@ class ParadoxMG5050EventMap():
         return ParadoxMG5050EventMap.labelTypeMap[lt]
 
     @staticmethod
-    def setZoneName(number, value):
-        ParadoxMG5050EventMap._zoneNumber.update({number: value})
+    def setzoneLabel(number, value):
+        ParadoxMG5050EventMap._zoneLabel.update({number: value})
         return
 
     @staticmethod
-    def getZoneName(number):
-        value = ParadoxMG5050EventMap._zoneNumber[number]
+    def getzoneLabel(number):
+        value = ParadoxMG5050EventMap._zoneLabel[number]
         return value
 
     @staticmethod
-    def getAllZoneNames():
-        return ParadoxMG5050EventMap._zoneNumber
+    def getAllzoneLabel():
+        return ParadoxMG5050EventMap._zoneLabel
 
     @staticmethod
-    def setUserLabel(number, value):
-        ParadoxMG5050EventMap._userNumber.update({number: value})
+    def setuserLabel(number, value):
+        ParadoxMG5050EventMap._userLabel.update({number: value})
         return
 
     @staticmethod
-    def getAllUserLabels():
-        return ParadoxMG5050EventMap._userNumber
+    def getAlluserLabel():
+        return ParadoxMG5050EventMap._userLabel
 
     @staticmethod
-    def setPartitionLabel(number, value):
-        ParadoxMG5050EventMap._partitionLabels.update({number: value})
+    def setpartitionLabel(number, value):
+        ParadoxMG5050EventMap._partitionLabel.update({number: value})
         return
 
     @staticmethod
-    def getAllPartitionLabels():
-        return ParadoxMG5050EventMap._partitionLabels
+    def getAllpartitionLabel():
+        return ParadoxMG5050EventMap._partitionLabel
 
     @staticmethod
-    def setBusModuleLabel(number, value):
-        ParadoxMG5050EventMap._busModuleLabels.update({number: value})
+    def setbusModuleLabel(number, value):
+        ParadoxMG5050EventMap._busModuleLabel.update({number: value})
         return
 
     @staticmethod
-    def getBusModuleLabel(number):
-        value = ParadoxMG5050EventMap._busModuleLabels[number]
+    def getbusModuleLabel(number):
+        value = ParadoxMG5050EventMap._busModuleLabel[number]
         return value
 
     @staticmethod
-    def getAllBusModuleLabels():
-        return ParadoxMG5050EventMap._busModuleLabels
+    def getAllbusModuleLabel():
+        return ParadoxMG5050EventMap._busModuleLabel
 
     @staticmethod
-    def setWirelessRepeaterLabel(number, value):
+    def setwirelessRepeaterLabel(number, value):
         ParadoxMG5050EventMap._wirelessRepeater.update({number: value})
         return
 
     @staticmethod
-    def getWirelessRepeaterLabel(number):
+    def getwirelessRepeaterLabel(number):
         value = ParadoxMG5050EventMap._wirelessRepeater[number]
         return value
 
     @staticmethod
-    def getAllWirelessRepeaterLabels():
+    def getAllwirelessRepeaterLabel():
         return ParadoxMG5050EventMap._wirelessRepeater
 
     @staticmethod
-    def setWirelessKeypadLabel(number, value):
+    def setwirelessKeypadLabel(number, value):
         ParadoxMG5050EventMap._wirelessKeypad.update({number: value})
         return
 
     @staticmethod
-    def getWirelessKeypadLabel(number):
+    def getwirelessKeypadLabel(number):
         value = ParadoxMG5050EventMap._wirelessKeypad[number]
         return value
 
     @staticmethod
-    def getAllWirelessKeypadLabels():
+    def getAllwirelessKeypadLabel():
         return ParadoxMG5050EventMap._wirelessKeypad
 
     @staticmethod
-    def setSiteName(number, value):
-        ParadoxMG5050EventMap._siteName.update({number: value})
+    def setsiteNameLabel(number, value):
+        ParadoxMG5050EventMap._siteNameLabel.update({number: value})
         return
 
     @staticmethod
-    def getSiteName(number):
-        value = ParadoxMG5050EventMap._siteName[number]
+    def getsiteNameLabel(number):
+        value = ParadoxMG5050EventMap._siteNameLabel[number]
         return value
 
     @staticmethod
-    def getAllSiteNames():
-        return ParadoxMG5050EventMap._siteName
+    def getAllsiteNameLabel():
+        return ParadoxMG5050EventMap._siteNameLabel
 
     @staticmethod
-    def setWirelessSirenLabel(number, value):
+    def setwirelessSirenLabel(number, value):
         ParadoxMG5050EventMap._wirelessSiren.update({number: value})
         return
 
     @staticmethod
-    def getWirelessSirenLabel(number):
+    def getwirelessSirenLabel(number):
         value = ParadoxMG5050EventMap._wirelessSiren[number]
         return value
 
     @staticmethod
-    def getAllWirelessSirenLabels():
+    def getAllwirelessSirenLabel():
         return ParadoxMG5050EventMap._wirelessSiren
 
     @staticmethod
-    def setOutputName(number, value):
-        ParadoxMG5050EventMap._pgmNumber.update({number: value})
+    def setoutputLabel(number, value):
+        ParadoxMG5050EventMap._outputLabel.update({number: value})
         return
 
     @staticmethod
-    def getOutputName(number):
-        value = ParadoxMG5050EventMap._pgmNumber[number]
+    def getoutputLabel(number):
+        value = ParadoxMG5050EventMap._outputLabel[number]
         return value
 
     @staticmethod
-    def getAllOutputNames():
-        return ParadoxMG5050EventMap._pgmNumber
-
-    @staticmethod
-    def saveZoneLabels():
-        with open('zonesLabels.pcl', 'wb') as handle:
-            pickle.dump(ParadoxMG5050EventMap._zoneNumber, handle)
-
-    @staticmethod
-    def saveUserLabels():
-        with open('userLabels.pcl', 'wb') as handle:
-            pickle.dump(ParadoxMG5050EventMap._userNumber, handle)
-
-    @staticmethod
-    def saveRemoteControlLabels():
-        with open('remoteControlLabels.pcl', 'wb') as handle:
-            pickle.dump(ParadoxMG5050EventMap._remoteNumber, handle)
-
-    @staticmethod
-    def saveOutputLabels():
-        with open('outputLabels.pcl', 'wb') as handle:
-            pickle.dump(ParadoxMG5050EventMap._pgmNumber, handle)
-
-    @staticmethod
-    def savePartitionLabels():
-        with open('partitionLabels.pcl', 'wb') as handle:
-            pickle.dump(ParadoxMG5050EventMap._partitionLabels, handle)
-
-    @staticmethod
-    def saveBusModuleLabels():
-        with open('busModuleLabels.pcl', 'wb') as handle:
-            pickle.dump(ParadoxMG5050EventMap._busModuleLabels, handle)
-
-    @staticmethod
-    def saveWirelessKeypadLabels():
-        with open('wirelessKeypadLabels.pcl', 'wb') as handle:
-            pickle.dump(ParadoxMG5050EventMap._wirelessKeypad, handle)
-
-    @staticmethod
-    def saveWirelessSirenLabels():
-        with open('wirelessSirenLabels.pcl', 'wb') as handle:
-            pickle.dump(ParadoxMG5050EventMap._wirelessSiren, handle)
-
-    @staticmethod
-    def saveSiteName():
-        with open('siteName.pcl', 'wb') as handle:
-            pickle.dump(ParadoxMG5050EventMap._siteName, handle)
-
-    @staticmethod
-    def saveWirelessRepeaterLabels():
-        with open('wirelessRepeaterLabels.pcl', 'wb') as handle:
-            pickle.dump(ParadoxMG5050EventMap._wirelessRepeater, handle)
-
-    '''-----------------------Loading of labels from files-------------------------'''
-
-    @staticmethod
-    def loadZoneLabels():
-        try:
-            with open('zonesLabels.pcl', 'rb') as handle:
-
-                return 0, pickle.load(handle)
-        except IOError:
-            return 1
-
-
-    @staticmethod
-    def loadUserLabels():
-        try:
-            with open('userLabels.pcl', 'rb') as handle:
-                ParadoxMG5050EventMap._userNumber = pickle.load(handle)
-                return 0
-        except IOError:
-            return 1
-
-
-    @staticmethod
-    def loadRemoteControlLabels():
-        try:
-            with open('remoteControlLabels.pcl', 'rb') as handle:
-                ParadoxMG5050EventMap._remoteNumber = pickle.load(handle)
-                return 0
-        except IOError:
-            return 1
-
-    @staticmethod
-    def loadOutputLabels():
-        try:
-            with open('outputLabels.pcl', 'rb') as handle:
-                ParadoxMG5050EventMap._pgmNumber = pickle.load(handle)
-                return 0
-        except IOError:
-            return 1
-
-    @staticmethod
-    def loadPartitionLabels():
-        try:
-            with open('partitionLabels.pcl', 'rb') as handle:
-                ParadoxMG5050EventMap._partitionLabels = pickle.load(handle)
-                return 0
-        except IOError:
-            return 1
-
-    @staticmethod
-    def loadBusModuleLabels():
-        try:
-            with open('busModuleLabels.pcl', 'rb') as handle:
-                ParadoxMG5050EventMap._busModuleLabels = pickle.load(handle)
-                return 0
-        except IOError:
-            return 1
-
-    @staticmethod
-    def loadWirelessKeypadLabels():
-        try:
-            with open('wirelessKeypadLabels.pcl', 'rb') as handle:
-                ParadoxMG5050EventMap._wirelessKeypad = pickle.load(handle)
-                return 0
-        except IOError:
-            return 1
-
-    @staticmethod
-    def loadWirelessSirenLabels():
-        try:
-            with open('wirelessSirenLabels.pcl', 'rb') as handle:
-                ParadoxMG5050EventMap._wirelessSiren = pickle.load(handle)
-                return 0
-        except IOError:
-            return 1
-
-    @staticmethod
-    def loadSiteName():
-        try:
-            with open('siteName.pcl', 'rb') as handle:
-                ParadoxMG5050EventMap._siteName = pickle.load(handle)
-                return 0
-        except IOError:
-            return 1
-
-    @staticmethod
-    def loadWirelessRepeaterLabels():
-        try:
-            with open('wirelessRepeaterLabels.pcl', 'rb') as handle:
-                ParadoxMG5050EventMap._wirelessRepeater = pickle.load(handle)
-                return 0
-        except IOError:
-            return 1
-
-
-
-
+    def getAlloutputLabel():
+        return ParadoxMG5050EventMap._outputLabel
 
 if __name__ == '__main__':
     print "Loaded Paradox Mapping"

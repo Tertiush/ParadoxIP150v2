@@ -139,47 +139,6 @@ def connect_ip150socket(address,port):
     return s
 
 
-def getAllLabels(Startup_Publish_All_Info = "False"):
-
-    myAlarm.updateZoneLabels()
-    if Startup_Publish_All_Info == "True":
-        client.publish(Topic_Publish_Labels + "/Zones", ';'.join('{}{}'.format(key, ":" + val) for key, val in myAlarm.eventmap.getAllZoneNames().items()))
-
-    myAlarm.updateOutputLabels()
-    if Startup_Publish_All_Info == "True":
-        client.publish(Topic_Publish_Labels + "/Outputs", ';'.join('{}{}'.format(key, ":" + val) for key, val in myAlarm.eventmap.getAllOutputNames().items()))
-
-    myAlarm.updateUserLabels()
-    if Startup_Publish_All_Info == "True":
-        client.publish(Topic_Publish_Labels + "/Users", ';'.join('{}{}'.format(key, ":" + val) for key, val in myAlarm.eventmap.getAllUserLabels().items()))
-
-    myAlarm.updatePartitionLabels()
-    if Startup_Publish_All_Info == "True":
-        client.publish(Topic_Publish_Labels + "/Partitions", ';'.join('{}{}'.format(key, ":" + val) for key, val in myAlarm.eventmap.getAllPartitionLabels().items()))
-
-    myAlarm.updateBusModuleLabels()
-    if Startup_Publish_All_Info == "True":
-        client.publish(Topic_Publish_Labels + "/BusModules", ';'.join('{}{}'.format(key, ":" + val) for key, val in myAlarm.eventmap.getAllBusModuleLabels().items()))
-
-    myAlarm.updateWirelessRepeaterLabels()
-    if Startup_Publish_All_Info == "True":
-        client.publish(Topic_Publish_Labels + "/WirelessRepeaters", ';'.join('{}{}'.format(key, ":" + val) for key, val in myAlarm.eventmap.getAllWirelessRepeaterLabels().items()))
-
-    myAlarm.updateWirelessKeypadLabels()
-    if Startup_Publish_All_Info == "True":
-        client.publish(Topic_Publish_Labels + "/WirelessKeypads", ';'.join('{}{}'.format(key, ":" + val) for key, val in myAlarm.eventmap.getAllWirelessKeypadLabels().items()))
-
-    myAlarm.updateWirelessSirenLabels()
-    if Startup_Publish_All_Info == "True":
-        client.publish(Topic_Publish_Labels + "/WirelessSirens", ';'.join('{}{}'.format(key, ":" + val) for key, val in myAlarm.eventmap.getAllWirelessSirenLabels().items()))
-
-    myAlarm.updateSiteName()
-    if Startup_Publish_All_Info == "True":
-        client.publish(Topic_Publish_Labels + "/SiteNames", ';'.join('{}{}'.format(key, ":" + val) for key, val in myAlarm.eventmap.getAllSiteNames().items()))
-
-
-    return
-
 class paradox:
 
     loggedin = 0
@@ -206,8 +165,14 @@ class paradox:
             mod = __import__("ParadoxMap", fromlist=[self.alarmeventmap + "EventMap"])
             self.eventmap = getattr(mod, self.alarmeventmap + "EventMap")
         except Exception, e:
-            print "Failed to load Event Map (exiting): ", repr(e)
-            sys.exit()
+            print "Failed to load Event Map: ", repr(e)
+            print "Defaulting to MG5050 Event Map..."
+            try:
+                mod = __import__("ParadoxMap", fromlist=["ParadoxMG5050EventMap"])
+                self.eventmap = getattr(mod, "ParadoxMG5050EventMap")
+            except Exception, e:
+                print "Failed to load Event Map (exiting): ", repr(e)
+                sys.exit()
 
         try:
             mod = __import__("ParadoxMap", fromlist=[self.alarmregmap + "Registers"])
@@ -352,146 +317,76 @@ class paradox:
 
         return message
 
-    def updateGenericLabels(self, mapping_dict, destination_dict):
+    def updateAllLabels(self, Debug_Mode = 0):
 
-        registers = mapping_dict
+        for func in self.registermap.getsupportedItems():
 
-        total = sum(1 for x in registers if isinstance(x, int))
-        # print "Amount of numeric items in dictionary to read: " + str(total)
+            if Debug_Mode >= 2:
+                print "Reading from alarm: " + func
 
-        header = registers["Header"]
-        skip_next = 0
-
-        for x in range(1, total+1):
-
-            if skip_next == 1:
-                skip_next = 0
-                continue
-
-            # print "Update generic registers step: " + str(x)
-
-            message = registers[x]["Send"]
             try:
-                next_message = registers[x + 1]["Send"]
-            except KeyError:
-                skip_next = 1
-                # print "no next key"
 
-            # print "Current msg " + " ".join(hex(ord(i)) for i in message)
-            # print "Next msg    " + " ".join(hex(ord(i)) for i in next_message)
+                register_dict = getattr(self.registermap, "get" + func + "Register")()
+                mapping_dict = getattr(self.eventmap, "set" + func)
 
-            assert isinstance(message, basestring), "Message to be sent is not a string: %r" % message
-            message = message.ljust(36, '\x00')
 
-            #print " ".join(hex(ord(i)) for i in message)
+                total = sum(1 for x in register_dict if isinstance(x, int))
 
-            reply = self.readDataRaw(header + self.format37ByteMessage(message))
+                if Debug_Mode >= 2:
+                    print "Amount of numeric items in dictionary to read: " + str(total)
 
-            start = registers[x]["Receive"]["Start"]
-            finish = registers[x]["Receive"]["Finish"]
-            # self.zoneNames.append(reply[start:finish].rstrip()) FIXME: remove all internal zoneNames references and only use the dict
-            destination_dict(x, reply[start:finish].rstrip().translate(None, '\x00'))
+                header = register_dict["Header"]
+                skip_next = 0
 
-            if (skip_next == 0) and (message[0:len(next_message)] == next_message):
-                # print "Same"
-                start = registers[x + 1]["Receive"]["Start"]
-                finish = registers[x + 1]["Receive"]["Finish"]
-                destination_dict(x + 1, reply[start:finish].rstrip().translate(None, '\x00'))
-                skip_next = 1
+                for x in range(1, total + 1):
 
-        return destination_dict
+                    if skip_next == 1:
+                        skip_next = 0
+                        continue
 
-    def updateOutputLabels(self):
+                    # print "Update generic registers step: " + str(x)
 
-        x = self.updateGenericLabels(self.registermap.getOutputLabelRegisters(),
-                                     self.eventmap.setOutputName)
+                    message = register_dict[x]["Send"]
+                    try:
+                        next_message = register_dict[x + 1]["Send"]
+                    except KeyError:
+                        skip_next = 1
+                        # print "no next key"
 
-        print "Outputs (PGM) detected: "
-        print self.eventmap.getAllOutputNames()
+                    # print "Current msg " + " ".join(hex(ord(i)) for i in message)
+                    # print "Next msg    " + " ".join(hex(ord(i)) for i in next_message)
 
-        return x
+                    assert isinstance(message, basestring), "Message to be sent is not a string: %r" % message
+                    message = message.ljust(36, '\x00')
 
-    def updateZoneLabels(self):
+                    # print " ".join(hex(ord(i)) for i in message)
 
-        x = self.updateGenericLabels(self.registermap.getZoneLabelRegisters(),
-                                     self.eventmap.setZoneName)
+                    reply = self.readDataRaw(header + self.format37ByteMessage(message))
 
-        self.zoneTotal = sum(1 for x in self.registermap.getZoneLabelRegisters() if isinstance(x, int))
+                    start = register_dict[x]["Receive"]["Start"]
+                    finish = register_dict[x]["Receive"]["Finish"]
+                    # self.zoneNames.append(reply[start:finish].rstrip()) FIXME: remove all internal zoneNames references and only use the dict
+                    mapping_dict(x, reply[start:finish].rstrip().translate(None, '\x00'))
 
-        print "Zones detected: "
-        print self.eventmap.getAllZoneNames()
+                    if (skip_next == 0) and (message[0:len(next_message)] == next_message):
+                        # print "Same"
+                        start = register_dict[x + 1]["Receive"]["Start"]
+                        finish = register_dict[x + 1]["Receive"]["Finish"]
+                        mapping_dict(x + 1, reply[start:finish].rstrip().translate(None, '\x00'))
+                        skip_next = 1
 
-        return x
+                if Debug_Mode >= 1:
+                    try:
+                        completed_dict = getattr(self.eventmap, "getAll" + func)()
+                        print "Labels detected for " + func + ":"
+                        print completed_dict
+                    except Exception, e:
+                        print "Failed to load supported function's completed mappings after updating: ", repr(e)
 
-    def updatePartitionLabels(self):
+            except Exception, e:
+                print "Failed to load supported function's mapping: ", repr(e)
 
-        x = self.updateGenericLabels(self.registermap.getPartitionLabelRegisters(),
-                                     self.eventmap.setPartitionLabel)
-
-        print "Partitions detected: "
-        print self.eventmap.getAllPartitionLabels()
-
-        return x
-
-    def updateUserLabels(self):
-
-        x = self.updateGenericLabels(self.registermap.getUserLabelRegisters(),
-                                     self.eventmap.setUserLabel)
-
-        print "Users detected: "
-        print self.eventmap.getAllUserLabels()
-
-        return x
-
-    def updateBusModuleLabels(self):
-
-        x = self.updateGenericLabels(self.registermap.getBusModuleLabelRegisters(),
-                                     self.eventmap.setBusModuleLabel)
-
-        print "Bus Modules detected: "
-        print self.eventmap.getAllBusModuleLabels()
-
-        return x
-
-    def updateWirelessRepeaterLabels(self):
-
-        x = self.updateGenericLabels(self.registermap.getWirelessRepeaterLabelRegisters(),
-                                     self.eventmap.setWirelessRepeaterLabel)
-
-        print "Wireless Repeaters detected: "
-        print self.eventmap.getAllWirelessRepeaterLabels()
-
-        return x
-
-    def updateWirelessKeypadLabels(self):
-
-        x = self.updateGenericLabels(self.registermap.getWirelessKeypadLabelRegisters(),
-                                 self.eventmap.setWirelessKeypadLabel)
-
-        print "Wireless Keypads detected: "
-        print self.eventmap.getAllWirelessKeypadLabels()
-
-        return x
-
-    def updateSiteName(self):
-
-        x = self.updateGenericLabels(self.registermap.getSiteNameRegisters(),
-                                     self.eventmap.setSiteName)
-
-        print "Site Name(s) detected: "
-        print self.eventmap.getAllSiteNames()
-
-        return x
-
-    def updateWirelessSirenLabels(self):
-
-        x = self.updateGenericLabels(self.registermap.getWirelessSirenLabelRegisters(),
-                                     self.eventmap.setWirelessSirenLabel)
-
-        print "Wireless Sirens detected: "
-        print self.eventmap.getAllWirelessSirenLabels()
-
-        return x
+        return
 
     def testForEvents(self, Events_Payload_Numeric = 0, Debug_Mode = 0):
 
@@ -668,7 +563,7 @@ class paradox:
         assert isinstance(state, basestring), "State given is not a string: %r" % str(state)
         assert (state.upper() == "ON" or state.upper() == "OFF"), "State is not given correctly: %r" % str(state)
 
-        self.controlGenericOutput(self.registermap.getControlOutputRegisters(), pgm, state.upper())
+        self.controlGenericOutput(self.registermap.getcontrolOutputRegister(), pgm, state.upper())
 
         return
 
@@ -694,9 +589,9 @@ class paradox:
 
         assert (isinstance(partition, int) and partition >= 0 and partition <= 16), "Problem with partition number: %r" % str(partition)
         assert isinstance(state, basestring), "State given is not a string: %r" % str(state)
-        assert (state.upper() in self.registermap.getAlarmRegisters()[partition]), "State is not given correctly: %r" % str(state)
+        assert (state.upper() in self.registermap.getcontrolAlarmRegister()[partition]), "State is not given correctly: %r" % str(state)
 
-        self.controlGenericAlarm(self.registermap.getAlarmRegisters(), partition, state.upper())
+        self.controlGenericAlarm(self.registermap.getcontrolAlarmRegister(), partition, state.upper())
 
         return
 
@@ -756,6 +651,7 @@ class paradox:
 if __name__ == '__main__':
 
     State_Machine = 0
+    attempts = 3
 
     while True:
 
@@ -862,7 +758,7 @@ if __name__ == '__main__':
                 if Startup_Update_All_Labels == "True" and myAlarm.skipLabelUpdate() == 0:
 
                     print "Updating all labels from alarm"
-                    getAllLabels(Startup_Publish_All_Info)
+                    myAlarm.updateAllLabels(Debug_Mode)
 
                     State_Machine += 1
                     print "Listening for events..."
