@@ -66,7 +66,9 @@ Once the script has settled to listen for events, the following topics are avail
   * Publish the following topic to control the <b>alarm</b>:
     * <b>Paradox/C/P1/Disarm</b>
     * (C = Control; P = Partition, followed by number; Then the action = Disarm / Arm / Sleep / Stay)
-    * The payload is not evaluated. Note that alarm controls can take a few seconds as the script must first be re-authenticated
+    * The payload is not evaluated in this case. Note that alarm controls can take a few seconds as the script must first be re-authenticated
+    * <b>Paradox/C/P1</b>, Payload: <b>Disarm</b>
+    * In this case the payload is used to determine the command to send.
   * Publish the following topic to control (Force/Pulse) an <b>output</b> (PGM):
     * <b>Paradox/C/FO/4/Off</b>
     * (C = Control; <b>FO = Force output / PO = Pulse Output</b>, followed by the output number; Then the action (for pulse this will be the intermediate state, e.g. to pulse High then back to Low use "On" and vice versa).
@@ -114,3 +116,27 @@ If you want to run this as a daemon on Mac,
 </plist>
 ```
 
+### On Debian Jessie using systemd
+(see: http://www.raspberrypi-spy.co.uk/2015/10/how-to-autorun-a-python-script-on-boot-using-systemd/)
+
+1. Create a file called IP150-MQTTv2.service in this directore: \lib\systemd\system => sudo nano \lib\systemd\system\IP150-MQTTv2.service
+2. Type the code below into this file, adapting it for where you placed the python script (in this case in /opt/ParadoxIP150v2)
+3. Ensure you change the working directory, otherwise depedencies will fail.
+4. You can now start/stop the service with => sudo systemctl start IP150-MQTTv2.service / sudo systemctl stop IP150-MQTTv2.service
+5. To run the new service upon startup, send the following commands: sudo systemctl daemon-reload && sudo systemctl enable IP150-MQTTv2.service
+6. To see the status of the service run => sudo systemctl status IP150-MQTTv2.service
+
+Content of IP150-MQTTv2.service file:
+```
+[Unit]
+Description=My Script Service
+After=multi-user.target
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/python /opt/ParadoxIP150v2/IP150-MQTTv2.py
+WorkingDirectory=/opt/ParadoxIP150v2
+
+[Install]
+WantedBy=multi-user.target
+```
