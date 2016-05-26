@@ -103,7 +103,12 @@ def on_message(client, userdata, msg):
             try:
                 Output_FControl_Number = int((topic.split(Topic_Subscribe_Control + 'FO/'))[1].split('/')[0])
                 print "Output force control number: ", Output_FControl_Number
-                Output_FControl_NewState = (topic.split('/FO/' + str(Output_FControl_Number) + '/'))[1]
+                try:
+                    Output_FControl_NewState = (topic.split('/FO/' + str(Output_FControl_Number) + '/'))[1]
+                except Exception, e:
+                    Output_FControl_NewState = msg.payload
+                    if len(Output_FControl_NewState) < 1:
+                        print 'No payload given for control number: e.g. On'
                 print "Output force control state: ", Output_FControl_NewState
                 Output_FControl_Action = 1
             except:
@@ -113,7 +118,12 @@ def on_message(client, userdata, msg):
             try:
                 Output_PControl_Number = int((topic.split(Topic_Subscribe_Control + 'PO/'))[1].split('/')[0])
                 print "Output pulse control number: ", Output_PControl_Number
-                Output_PControl_NewState = (topic.split('/PO/' + str(Output_PControl_Number) + '/'))[1]
+                try:
+                    Output_PControl_NewState = (topic.split('/PO/' + str(Output_PControl_Number) + '/'))[1]
+                except Exception, e:
+                    Output_PControl_NewState = msg.payload
+                    if len(Output_PControl_NewState) < 1:
+                        print 'No payload given for control number: e.g. On'
                 print "Output pulse control state: ", Output_PControl_NewState
                 Output_PControl_Action = 1
             except:
