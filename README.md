@@ -76,6 +76,8 @@ Once the script has settled to listen for events, the following topics are avail
     * (C = Control; <b>FO = Force output / PO = Pulse Output</b>, followed by the output number; Then the action (for pulse this will be the intermediate state, e.g. to pulse High then back to Low use "On" and vice versa).
     * The payload is not evaluated. Note that output controls can take a few seconds as the script must first be re-authenticated 
     * Pulse outputs are configured for approx. 0.5sec.
+    * <b>Paradox/C/PO/1</b>, Payload: <b>On</b>
+    * In this case the payload is used to determine the command to send: Pulse Output 1, On->Off
 * Controlling this application
   * Publish the following topics to enable/disable polling of the IP module:
     * <b>Paradox/C/Polling/Enable</b>
