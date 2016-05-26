@@ -5,8 +5,10 @@ The script was designed to be extendable to support more alarm types. See the Pa
 
 <b>NB: This is still a very early release and has its bugs. Feel free to submit a PR, any help is appreciated, even if its for my bad grammer/spelling!</b>
 
+Confirmed supported systems: See the [wiki](../../wiki) (please let me know if yours work, or not)
+
 ## Steps to use it:
-1.  Tested with Python 2.7.10
+1.  Tested with Python 2.7.10 & [Mosquitto MQTT Broker](http://mosquitto.org)
 2.  Download the files in this repository and place it in some directory
 3.  Edit the config.ini file to match your setup
 4.  Run the script: Python IP150-MQTTv2.py
