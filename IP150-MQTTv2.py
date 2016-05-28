@@ -214,7 +214,7 @@ class paradox:
         print "Loading previous event states and labels from file"
         self.eventmap.load()
 
-    def login(self, password):  # Construct the login message, 16 byte header +
+    def login(self, password, Debug_Mode=0):  # Construct the login message, 16 byte header +
         # 16byte [or multiple] payloading being the password
         print "Logging into alarm system..."
 
@@ -238,7 +238,7 @@ class paradox:
         # FIXME: Add support for passwords longer than 16 characters
         message = message.ljust(16, '\xee')  # The remainder of the 16B payload is filled with 0xee
 
-        reply = self.readDataRaw(header + message)  # Send message to the alarm panel and read the reply
+        reply = self.readDataRaw(header + message, Debug_Mode)  # Send message to the alarm panel and read the reply
 
         if reply[4] == '\x38':
             print "Login to alarm panel successful"
@@ -251,11 +251,11 @@ class paradox:
         header[1] = '\x00'
         header[5] = '\xf2'
         header2 = "".join(header)
-        self.readDataRaw(header2)
+        self.readDataRaw(header2, Debug_Mode)
 
         header[5] = '\xf3'
         header2 = "".join(header)
-        reply = self.readDataRaw(header2)
+        reply = self.readDataRaw(header2, Debug_Mode)
 
         reply = list(reply)  # Send "waiting" header until reply is at least 48 bytes in length indicating ready state
 
@@ -265,7 +265,7 @@ class paradox:
         header2 = "".join(header)
         message = '\x72\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         message = self.format37ByteMessage(message)
-        reply = self.readDataRaw(header2 + message)
+        reply = self.readDataRaw(header2 + message, Debug_Mode)
 
         header[1] = '\x26'
         header[3] = '\x03'
@@ -273,7 +273,7 @@ class paradox:
         header2 = "".join(header)
         message = '\x50\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         message = self.format37ByteMessage(message)
-        reply = self.readDataRaw(header2 + message)
+        reply = self.readDataRaw(header2 + message, Debug_Mode)
 
         header[1] = '\x25'
         header[3] = '\x04'
@@ -281,7 +281,7 @@ class paradox:
         header2 = "".join(header)
         message = '\x5f\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         message = self.format37ByteMessage(message)
-        reply = self.readDataRaw(header2 + message)
+        reply = self.readDataRaw(header2 + message, Debug_Mode)
 
         header[1] = '\x25'
         header[3] = '\x04'
@@ -289,7 +289,7 @@ class paradox:
         header2 = "".join(header)
         message = '\x00\x00\x00\x00\x41\x04\x91\x11\x00\x00\x00\x00\x19\x00\x00\x01\x12\xa5\x02\x02\x3f\x00\xb8\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00'
         message = self.format37ByteMessage(message)
-        reply = self.readDataRaw(header2 + message)
+        reply = self.readDataRaw(header2 + message, Debug_Mode)
 
         header[1] = '\x25'
         header[3] = '\x04'
@@ -297,7 +297,7 @@ class paradox:
         header2 = "".join(header)
         message = '\x50\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         message = self.format37ByteMessage(message)
-        reply = self.readDataRaw(header2 + message)
+        reply = self.readDataRaw(header2 + message, Debug_Mode)
 
         header[1] = '\x25'
         header[3] = '\x04'
@@ -305,7 +305,7 @@ class paradox:
         header2 = "".join(header)
         message = '\x50\x00\x0e\x52\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         message = self.format37ByteMessage(message)
-        reply = self.readDataRaw(header2 + message)
+        reply = self.readDataRaw(header2 + message, Debug_Mode)
 
         return loggedin
 
@@ -377,7 +377,7 @@ class paradox:
 
                     # print " ".join(hex(ord(i)) for i in message)
 
-                    reply = self.readDataRaw(header + self.format37ByteMessage(message))
+                    reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
 
                     start = register_dict[x]["Receive"]["Start"]
                     finish = register_dict[x]["Receive"]["Finish"]
@@ -505,7 +505,7 @@ class paradox:
             self.comms.send(request)
             time.sleep(0.25)
 
-    def readDataRaw(self, request='', Debug_Mode=0):
+    def readDataRaw(self, request='', Debug_Mode=2):
 
         # self.testForEvents()                # First check for any pending events received
 
@@ -546,9 +546,9 @@ class paradox:
                 else:
                     return inc_data
 
-    def readDataStruct37(self, inputData=''):  # Sends data, read input data and return the Header and Message
+    def readDataStruct37(self, inputData='', Debug_Mode=0):  # Sends data, read input data and return the Header and Message
 
-        rawdata = self.readDataRaw(inputData)
+        rawdata = self.readDataRaw(inputData, Debug_Mode)
 
         # Extract the header and message
         if len(rawdata) > 16:
@@ -557,7 +557,7 @@ class paradox:
 
         return header, message
 
-    def controlGenericOutput(self, mapping_dict, output, state):
+    def controlGenericOutput(self, mapping_dict, output, state, Debug_Mode=0):
 
         registers = mapping_dict
 
@@ -573,11 +573,11 @@ class paradox:
 
         # print " ".join(hex(ord(i)) for i in message)
 
-        reply = self.readDataRaw(header + self.format37ByteMessage(message))
+        reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
 
         return
 
-    def controlPGM(self, pgm, state="OFF"):
+    def controlPGM(self, pgm, state="OFF", Debug_Mode=0):
 
         # print state.upper()
 
@@ -586,11 +586,11 @@ class paradox:
         assert isinstance(state, basestring), "State given is not a string: %r" % str(state)
         assert (state.upper() == "ON" or state.upper() == "OFF"), "State is not given correctly: %r" % str(state)
 
-        self.controlGenericOutput(self.registermap.getcontrolOutputRegister(), pgm, state.upper())
+        self.controlGenericOutput(self.registermap.getcontrolOutputRegister(), pgm, state.upper(), Debug_Mode)
 
         return
 
-    def controlGenericAlarm(self, mapping_dict, partition, state):
+    def controlGenericAlarm(self, mapping_dict, partition, state, Debug_Mode):
         registers = mapping_dict
 
         header = registers["Header"]
@@ -604,11 +604,11 @@ class paradox:
 
         # print " ".join(hex(ord(i)) for i in message)
 
-        reply = self.readDataRaw(header + self.format37ByteMessage(message))
+        reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
 
         return
 
-    def controlAlarm(self, partition=1, state="Disarm"):
+    def controlAlarm(self, partition=1, state="Disarm", Debug_Mode=0):
 
         assert (
             isinstance(partition,
@@ -618,17 +618,17 @@ class paradox:
         assert (state.upper() in self.registermap.getcontrolAlarmRegister()[
             partition]), "State is not given correctly: %r" % str(state)
 
-        self.controlGenericAlarm(self.registermap.getcontrolAlarmRegister(), partition, state.upper())
+        self.controlGenericAlarm(self.registermap.getcontrolAlarmRegister(), partition, state.upper(), Debug_Mode)
 
         return
 
-    def disconnect(self):
+    def disconnect(self, Debug_Mode=0):
 
         header = "\xaa\x00\x00\x03\x51\xff\x00\x0e\x00\x01\xee\xee\xee\xee\xee\xee"
 
-        self.readDataRaw(header)
+        self.readDataRaw(header, Debug_Mode)
 
-    def keepAlive(self):
+    def keepAlive(self, Debug_Mode=0):
 
         header = "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee"
 
@@ -761,7 +761,7 @@ if __name__ == '__main__':
 
                 myAlarm = paradox(comms, 0, 3, Alarm_Event_Map, Alarm_Registry_Map)
 
-                myAlarm.login(passw)
+                myAlarm.login(passw, Debug_Mode)
 
                 State_Machine += 1
 
@@ -818,29 +818,29 @@ if __name__ == '__main__':
                 # Test for pending Alarm Control
                 if Alarm_Control_Action == 1:
                     myAlarm.login(passw)
-                    myAlarm.controlAlarm(Alarm_Control_Partition, Alarm_Control_NewState)
+                    myAlarm.controlAlarm(Alarm_Control_Partition, Alarm_Control_NewState, Debug_Mode)
                     Alarm_Control_Action = 0
 
                 # Test for pending Force Output Control
                 if Output_FControl_Action == 1:
                     myAlarm.login(passw)
-                    myAlarm.controlPGM(Output_FControl_Number, Output_FControl_NewState)
+                    myAlarm.controlPGM(Output_FControl_Number, Output_FControl_NewState, Debug_Mode)
                     Output_FControl_Action = 0
 
                 # Test for pending Pulse Output Control
                 if Output_PControl_Action == 1:
                     myAlarm.login(passw)
-                    myAlarm.controlPGM(Output_PControl_Number, Output_PControl_NewState)
+                    myAlarm.controlPGM(Output_PControl_Number, Output_PControl_NewState, Debug_Mode)
                     time.sleep(0.5)
                     if Output_PControl_NewState.upper() == "ON":
-                        myAlarm.controlPGM(Output_PControl_Number, "OFF")
+                        myAlarm.controlPGM(Output_PControl_Number, "OFF", Debug_Mode)
                     else:
-                        myAlarm.controlPGM(Output_PControl_Number, "ON")
+                        myAlarm.controlPGM(Output_PControl_Number, "ON", Debug_Mode)
                     Output_PControl_Action = 0
 
                 time.sleep(Polling_Enabled)
 
-                myAlarm.keepAlive()
+                myAlarm.keepAlive(Debug_Mode)
 
             except Exception, e:
 
