@@ -29,6 +29,7 @@ Topic_Subscribe_Control = "Paradox/C/" # e.g. To arm partition 1: Paradox/C/P1/A
 Startup_Publish_All_Info = "True"
 Startup_Update_All_Labels = "True"
 Topic_Publish_Labels = "Paradox/Labels"
+Topic_Publish_AppState = "Paradox/State"
 Alarm_Model = "ParadoxMG5050"
 Alarm_Registry_Map = "ParadoxMG5050"
 Alarm_Event_Map = "ParadoxMG5050"
@@ -94,6 +95,7 @@ def on_message(client, userdata, msg):
         if "Polling" in msg.topic:
             if "Enable" in msg.topic:
                 print "Enable polling message received..."
+                client.publish(Topic_Publish_AppState, "Polling: Enabling...", 0, True)
                 Polling_Enabled = 1
             if "Disable" in msg.topic:
                 print "Disable polling message received..."
@@ -110,6 +112,8 @@ def on_message(client, userdata, msg):
                     if len(Output_FControl_NewState) < 1:
                         print 'No payload given for control number: e.g. On'
                 print "Output force control state: ", Output_FControl_NewState
+                client.publish(Topic_Publish_AppState,
+                               "Output: Forcing PGM " + str(Output_FControl_Number) + " to state: " + Output_FControl_NewState, 0, True)
                 Output_FControl_Action = 1
             except:
                 print "MQTT message received with incorrect structure"
@@ -125,6 +129,9 @@ def on_message(client, userdata, msg):
                     if len(Output_PControl_NewState) < 1:
                         print 'No payload given for control number: e.g. On'
                 print "Output pulse control state: ", Output_PControl_NewState
+                client.publish(Topic_Publish_AppState,
+                               "Output: Pulsing PGM " + str(Output_PControl_Number) + " to state: " + Output_PControl_NewState,
+                               0, True)
                 Output_PControl_Action = 1
             except:
                 print "MQTT message received with incorrect structure"
@@ -140,6 +147,9 @@ def on_message(client, userdata, msg):
                         print 'No payload given for alarm control: e.g. Disarm'
 
                 print "Alarm control state: ", Alarm_Control_NewState
+                client.publish(Topic_Publish_AppState,
+                               "Alarm: Control partition " + str(Alarm_Control_Partition) + " to state: " + Alarm_Control_NewState,
+                               0, True)
                 Alarm_Control_Action = 1
             except:
                 print "MQTT message received with incorrect structure"
@@ -152,6 +162,9 @@ def connect_ip150socket(address, port):
         s.connect((address, port))
     except Exception, e:
         print "Error connecting to IP module (exiting): " + repr(e)
+        client.publish(Topic_Publish_AppState,
+                       "Error connecting to IP module (exiting): " + repr(e),
+                       0, True)
         sys.exit()
 
     return s
@@ -287,7 +300,11 @@ class paradox:
         header[3] = '\x04'
         header[5] = '\x00'
         header2 = "".join(header)
-        message = '\x00\x00\x00\x00\x41\x04\x91\x11\x00\x00\x00\x00\x19\x00\x00\x01\x12\xa5\x02\x02\x3f\x00\xb8\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00'
+        message = '\x00\x00\x00\x00\x41'
+        message += reply[21:26]
+        message += '\x00\x00\x00\x00\x19\x00\x00'
+        message += reply[31:39]
+        message += '\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00'
         message = self.format37ByteMessage(message)
         reply = self.readDataRaw(header2 + message, Debug_Mode)
 
@@ -391,13 +408,13 @@ class paradox:
                         mapping_dict(x + 1, reply[start:finish].rstrip().translate(None, '\x00'))
                         skip_next = 1
 
-                if Debug_Mode >= 1:
-                    try:
-                        completed_dict = getattr(self.eventmap, "getAll" + func)()
+                try:
+                    completed_dict = getattr(self.eventmap, "getAll" + func)()
+                    if Debug_Mode >= 1:
                         print "Labels detected for " + func + ":"
                         print completed_dict
-                    except Exception, e:
-                        print "Failed to load supported function's completed mappings after updating: ", repr(e)
+                except Exception, e:
+                    print "Failed to load supported function's completed mappings after updating: ", repr(e)
 
                 if Startup_Publish_All_Info == "True":
                     topic = func.split("Label")[0]
@@ -416,7 +433,8 @@ class paradox:
 
         if Debug_Mode >= 1:
             print '.'
-            reply = '.'
+
+        reply = '.'
 
         if Debug_Mode >= 1 and reply_amount > 1:
             print "Multiple data: " + repr(messages)
@@ -427,32 +445,34 @@ class paradox:
                 if Debug_Mode >= 2:
                     print "Event data: " + " ".join(hex(ord(i)) for i in message)
 
-                if Events_Payload_Numeric == 0:
+                if len(message) > 0:
+                    if message[0] == '\xe2' or message[0] == '\xe0':
 
-                    if len(message) > 0:
-                        if message[0] == '\xe2' or message[0] == '\xe0':
+                        try:
 
-                            try:
+                            if Events_Payload_Numeric == 0:
 
                                 event, subevent = self.eventmap.getEventDescription(ord(message[7]), ord(message[8]))
 
                                 reply = "Event:" + event + ";SubEvent:" + subevent
 
-                                if Debug_Mode >= 1:
-                                    print reply
+                            else:
 
-                                client.publish(Topic_Publish_Events, reply, qos=0, retain=False)
+                                reply = "E:" + str(ord(message[7])) + ";SE:" + str(ord(message[8]))
 
-                            except ValueError:
-                                reply = "No register entry for Event: " + str(ord(message[7])) + ", Sub-Event: " + str(
-                                    ord(message[8]))
+                            client.publish(Topic_Publish_Events, reply, qos=0, retain=False)
 
-                        else:
-                            reply = "Unknown event: " + " ".join(hex(ord(i)) for i in message)
+                            if Debug_Mode >= 1:
+                                print reply
 
-                else:
+                        except ValueError:
+                            reply = "No register entry for Event: " + str(ord(message[7])) + ", Sub-Event: " + str(
+                                ord(message[8]))
 
-                    reply = "E:" + str(ord(message[7])) + ";SE:" + str(ord(message[8]))
+                    else:
+                        reply = "Unknown event: " + " ".join(hex(ord(i)) for i in message)
+
+
 
         return reply
 
@@ -709,7 +729,7 @@ if __name__ == '__main__':
                 Topic_Subscribe_Control = Config.get("MQTT Topics", "Topic_Subscribe_Control")
                 Startup_Publish_All_Info = Config.get("MQTT Topics", "Startup_Publish_All_Info")
                 Topic_Publish_Labels = Config.get("MQTT Topics", "Topic_Publish_Labels")
-
+                Topic_Publish_AppState = Config.get("MQTT Topics", "Topic_Publish_AppState")
                 Startup_Update_All_Labels = Config.get("Application", "Startup_Update_All_Labels")
                 Debug_Mode = int(Config.get("Application", "Debug_Mode"))
 
@@ -738,6 +758,8 @@ if __name__ == '__main__':
 
                 print "MQTT client subscribed to control messages on topic: " + Topic_Subscribe_Control + "#"
 
+                client.publish(Topic_Publish_AppState,"State Machine 1, Connected to MQTT Broker",0,True)
+
                 State_Machine += 1
 
             except Exception, e:
@@ -757,22 +779,38 @@ if __name__ == '__main__':
 
             try:
 
+                client.publish(Topic_Publish_AppState, "State Machine 2, Connecting to IP Module...", 0, True)
+
                 comms = connect_ip150socket(IP150_IP, IP150_Port)
+                client.publish(Topic_Publish_AppState,
+                               "State Machine 2, Connected to IP Module, unlocking...",
+                               0, True)
 
                 myAlarm = paradox(comms, 0, 3, Alarm_Event_Map, Alarm_Registry_Map)
 
-                myAlarm.login(passw, Debug_Mode)
-
-                State_Machine += 1
+                if not myAlarm.login(passw, Debug_Mode):
+                    print "Failed to login & unlock to IP module, check if another app is using the port. Retrying... "
+                    client.publish(Topic_Publish_AppState,
+                                   "State Machine 2, Failed to login & unlock to IP module, check if another app is using the port. Retrying... ",
+                                   0, True)
+                    comms.close()
+                    time.sleep(Poll_Speed * 20)
+                else:
+                    client.publish(Topic_Publish_AppState, "State Machine 2, Logged into IP Module successfully", 0, True)
+                    State_Machine += 1
 
             except Exception, e:
 
-                print "Error attempting login to IP module (" + str(attempts) + ": " + repr(e)
+                print "Error attempting connection to IP module (" + str(attempts) + ": " + repr(e)
+                client.publish(Topic_Publish_AppState,
+                               "State Machine 2, Exception, retrying... (" + str(attempts) + ": " + repr(e),
+                               0, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
                     print "Error within State_Machine: " + str(State_Machine) + ": " + repr(e)
+                    client.publish(Topic_Publish_AppState, "State Machine 2, Error, moving to previous state", 0, True)
                     State_Machine -= 1
                     print "Going to State_Machine: " + str(State_Machine)
                     attempts = 3
@@ -783,25 +821,29 @@ if __name__ == '__main__':
 
                 if Startup_Update_All_Labels == "True" and myAlarm.skipLabelUpdate() == 0:
 
+                    client.publish(Topic_Publish_AppState, "State Machine 3, Reading labels from alarm", 0, True)
+
                     print "Updating all labels from alarm"
                     myAlarm.updateAllLabels(Startup_Publish_All_Info, Topic_Publish_Labels, Debug_Mode)
 
                     State_Machine += 1
                     print "Listening for events..."
-
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
                 else:
 
                     State_Machine += 1
                     print "Listening for events..."
-
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
             except Exception, e:
 
                 print "Error reading labels: " + repr(e)
+                client.publish(Topic_Publish_AppState, "State Machine 3, Exception: " + repr(e), 0, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
                     print "Error within State_Machine: " + str(State_Machine) + ": " + repr(e)
+                    client.publish(Topic_Publish_AppState, "State Machine 3, Error, moving to previous state", 0, True)
                     State_Machine -= 1
                     print "Going to State_Machine: " + str(State_Machine)
 
@@ -820,12 +862,16 @@ if __name__ == '__main__':
                     myAlarm.login(passw)
                     myAlarm.controlAlarm(Alarm_Control_Partition, Alarm_Control_NewState, Debug_Mode)
                     Alarm_Control_Action = 0
+                    print "Listening for events..."
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
 
                 # Test for pending Force Output Control
                 if Output_FControl_Action == 1:
                     myAlarm.login(passw)
                     myAlarm.controlPGM(Output_FControl_Number, Output_FControl_NewState, Debug_Mode)
                     Output_FControl_Action = 0
+                    print "Listening for events..."
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
 
                 # Test for pending Pulse Output Control
                 if Output_PControl_Action == 1:
@@ -836,7 +882,10 @@ if __name__ == '__main__':
                         myAlarm.controlPGM(Output_PControl_Number, "OFF", Debug_Mode)
                     else:
                         myAlarm.controlPGM(Output_PControl_Number, "ON", Debug_Mode)
+
                     Output_PControl_Action = 0
+                    print "Listening for events..."
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
 
                 time.sleep(Polling_Enabled)
 
@@ -845,6 +894,7 @@ if __name__ == '__main__':
             except Exception, e:
 
                 print "Error during normal poll: " + repr(e) + ", Attempt: " + str(attempts)
+                client.publish(Topic_Publish_AppState, "State Machine 4, Exception: " + repr(e), 0, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
@@ -852,12 +902,14 @@ if __name__ == '__main__':
                     print "Error within State_Machine: " + str(State_Machine) + ": " + repr(e)
                     State_Machine -= 1
                     print "Going to State_Machine: " + str(State_Machine)
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Error, moving to previous state", 0, True)
                     attempts = 3
 
 
         elif Polling_Enabled == 0 and State_Machine <= 4:
 
             print "Disabling polling & disconnecting from Alarm"
+            client.publish(Topic_Publish_AppState, "Polling: Disabled", 0, True)
             comms.close()
             State_Machine = 10
 
