@@ -74,7 +74,7 @@ Once the script has settled to listen for events, the following topics are avail
   * Publish the following topic to control (Force/Pulse) an <b>output</b> (PGM):
     * <b>Paradox/C/FO/4/Off</b>
     * (C = Control; <b>FO = Force output / PO = Pulse Output</b>, followed by the output number; Then the action (for pulse this will be the intermediate state, e.g. to pulse High then back to Low use "On" and vice versa).
-    * The payload is not evaluated. Note that output controls can take a few seconds as the script must first be re-authenticated 
+    * The payload is not evaluated in this case. Note that output controls can take a few seconds as the script must first be re-authenticated 
     * Pulse outputs are configured for approx. 0.5sec.
     * <b>Paradox/C/PO/1</b>, Payload: <b>On</b>
     * In this case the payload is used to determine the command to send: Pulse Output 1, On->Off
@@ -86,6 +86,17 @@ Once the script has settled to listen for events, the following topics are avail
     * This command can be useful if the script was unable to correctly detect labels or you want it to re-scan them. Then simply disable and re-enable polling which will update the labels (if your config.ini file is configured for this).
 
 <b>Note: If you modified the subscription topic for <b>controls</b> in the config.ini file ensure it ends with a '/'.</b>
+
+### Script State
+* The current state of the script is linked to a topic found in the config file. Examples:
+ * Topic <b>Paradox/State</b>
+  * Payload (example): State Machine 1, Connected to MQTT Broker
+  * Payload (example): State Machine 2, Connecting to IP Module...
+  * Payload (example): State Machine 2, Connected to IP Module, unlocking...
+  * Payload (example): State Machine 2, Logged into IP Module successfully
+  * Payload (example): State Machine 3, Reading labels from alarm
+  * Payload (example): State Machine 4, Listening for events...
+  * Payload (example): Output: Forcing PGM 1 to state: On
 
 
 ## Running as a service / daemon
