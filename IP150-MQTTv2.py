@@ -258,6 +258,7 @@ class paradox:
             loggedin = 1
         else:
             loggedin = 0
+            print "Login request unsuccessful, panel returned: " + " ".join(hex(ord(reply[4])))
 
         header = list(header)
 
@@ -280,6 +281,7 @@ class paradox:
         message = self.format37ByteMessage(message)
         reply = self.readDataRaw(header2 + message, Debug_Mode)
 
+        # A - no sending after this
         header[1] = '\x26'
         header[3] = '\x03'
         header[5] = '\xf8'
@@ -299,18 +301,21 @@ class paradox:
         header[1] = '\x25'
         header[3] = '\x04'
         header[5] = '\x00'
+        header[7] = '\x14'
         header2 = "".join(header)
-        message = '\x00\x00\x00\x00\x41'
-        message += reply[21:26]
-        message += '\x00\x00\x00\x00\x19\x00\x00'
+        # reply = '\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x13\x14\x15\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x13\x14\x15\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x13\x14\x15\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09'
+        message = reply[16:26]
+        message += reply[24:26]
+        message += '\x19\x00\x00'
         message += reply[31:39]
-        message += '\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00'
+        message += '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00'
         message = self.format37ByteMessage(message)
         reply = self.readDataRaw(header2 + message, Debug_Mode)
 
         header[1] = '\x25'
         header[3] = '\x04'
         header[5] = '\x00'
+        header[7] = '\x14'
         header2 = "".join(header)
         message = '\x50\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         message = self.format37ByteMessage(message)
@@ -319,6 +324,7 @@ class paradox:
         header[1] = '\x25'
         header[3] = '\x04'
         header[5] = '\x00'
+        header[7] = '\x14'
         header2 = "".join(header)
         message = '\x50\x00\x0e\x52\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         message = self.format37ByteMessage(message)
