@@ -1,6 +1,8 @@
 # Paradox IP150-MQTTv2
 Python-based IP150 'middle-ware' that uses the IP module's software port for monitoring and control of the alarm via an MQTT Broker.
 
+Based on the very good work of Tertiush
+
 The script was designed to be extendable to support more alarm types. See the ParadoxMap.py file for details. If you want to do some tcp dump of your alarm model to add into there, get Paradox's Winload software. Then within it's root folder find a file called COM.ini and change the 'IPEncrypted' setting to FALSE. You can then use WireShark (or equivalent) to trap whatever commands/replies you want to and either extend the ParadoxMap.py's existing dictionaries or add in a complete new Class for another alarm type.
 
 <b>NB: This is still a very early release and has its bugs. Feel free to submit a PR, any help is appreciated, even if its for my bad grammer/spelling!</b>
@@ -10,8 +12,9 @@ Confirmed supported systems: See the [wiki](../../wiki) (please let me know if y
 ## Steps to use it:
 1.  Tested with Python 2.7.10 & [Mosquitto MQTT Broker](http://mosquitto.org)
 2.  Download the files in this repository and place it in some directory
-3.  Edit the config.ini file to match your setup
+3.  Copy the config-master.ini to config.ini file and edit to configure.
 4.  Run the script: Python IP150-MQTTv2.py
+
 
 ## What happens in the background:
 The main script will connect to you IP module's software port (usually port 10000) and login with your password. It will then use two seperate classes (containing dictionaries) referenced in from the ParadoxMap.py file to extract different info from the alarm and translate events into meaningfull text. The dictionaries currently supports the MG5050 V4 firmware but could evolve over time if the community adds more alarm types to the dictionaries.
@@ -23,6 +26,9 @@ Seeing as not all alarm variants are initially supported, you can use the config
 ## What to expect:
 ### Labels
 If successfully connected to your IP150 and MQTT broker, the app will optionally start off by publishing (once-off) all the detected labels (zone, partition, output, etc. names) to your broker. Both the reading of label names and publishing thereof can be independantly controlled through the config.ini file. If you do read the labels, events such as "Zone open - Zone number 3" will translate to "Zone open - Garage door" or "Low battery on zone - Zone 1" to "Low battery on zone - Alley Beam" (assuming this is named/configured as such in your alarm).
+
+Note: on a Spectre SP5500 these labels do not seem to read.  To this end, I've updated to pull the zone name from the event message and will publish an MQTT topic for the zone name.
+
 * Zone Labels:
   * Topic: <b>Paradox/Labels/Zones</b>
   * Payload (example): <b>1:Front PIR;2:Back PIR;3:Garage Door;... </b>
@@ -104,54 +110,8 @@ Once the script has settled to listen for events, the following topics are avail
 ### On Mac
 ( thanks [@Rtaxerxes](https://github.com/Rtaxerxes) )
 
-If you want to run this as a daemon on Mac, 
- 1. Create a file called local.paradox.plist.
- 2. Copy and paste the below into the file, editing for the location of your files.
- 3. Copy the file to /Library/LaunchDaemons/.
- 4. Run it with: sudo launchctl load /Library/LaunchDaemons/local.paradox.plist
- 5. Stop it with: sudo launchctl unload /Library/LaunchDaemons/local.paradox.plist
+If you want to run this as a daemon on Linux, 
+ 1. Copy the paradoxip.service file to /usr/lib/systemd/system (where mine is)
+ 2. Run sudo systemctl daemon-reload
+ 3. Then you should be able to start the service with sudi service paradoxip start
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-    <dict>
-        <key>Label</key>
-            <string>local.paradox</string>
-        <key>WorkingDirectory</key>
-            <string>/(folder where files are)</string>
-        <key>ProgramArguments</key>
-        <array>
-            <string>/usr/bin/python</string>
-            <string>/(folder where files are)/IP150-MQTT.py</string>
-        </array>
-        <key>RunAtLoad</key>
-            <true/>
-    </dict>
-</plist>
-```
-
-### On Debian Jessie using systemd
-(see: http://www.raspberrypi-spy.co.uk/2015/10/how-to-autorun-a-python-script-on-boot-using-systemd/)
-
-1. Create a file called IP150-MQTTv2.service in this directore: \lib\systemd\system => sudo nano \lib\systemd\system\IP150-MQTTv2.service
-2. Type the code below into this file, adapting it for where you placed the python script (in this case in /opt/ParadoxIP150v2)
-3. Ensure you change the working directory, otherwise depedencies will fail.
-4. You can now start/stop the service with => sudo systemctl start IP150-MQTTv2.service / sudo systemctl stop IP150-MQTTv2.service
-5. To run the new service upon startup, send the following commands: sudo systemctl daemon-reload && sudo systemctl enable IP150-MQTTv2.service
-6. To see the status of the service run => sudo systemctl status IP150-MQTTv2.service
-
-Content of IP150-MQTTv2.service file:
-```
-[Unit]
-Description=My Script Service
-After=multi-user.target
-
-[Service]
-Type=idle
-ExecStart=/usr/bin/python /opt/ParadoxIP150v2/IP150-MQTTv2.py
-WorkingDirectory=/opt/ParadoxIP150v2
-
-[Install]
-WantedBy=multi-user.target
-```
