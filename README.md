@@ -69,6 +69,12 @@ Once the script has settled to listen for events, the following topics are avail
     * Payload (example): <b>Event:Non-reportable event;SubEvent:Arm in sleep mode</b>
     * etc.....
 
+  * Topic <b>Paradox/Zones/<i>zone label</i></b>
+  Sets a status for on of off for each zone.  Allows Openhab to easily configure an item for each zone
+
+  * Topic <b>Paradox/Partition</b>
+  Shows the current partition status.  Can't be determines on startup though, only while running. 
+
 ### Controls
 * Controlling the alarm or outputs
   * Publish the following topic to control the <b>alarm</b>:
@@ -106,9 +112,6 @@ Once the script has settled to listen for events, the following topics are avail
 
 
 ## Running as a service / daemon
-
-### On Mac
-( thanks [@Rtaxerxes](https://github.com/Rtaxerxes) )
 
 If you want to run this as a daemon on Linux, 
  1. Copy the paradoxip.service file to /usr/lib/systemd/system (where mine is)
