@@ -1,0 +1,18 @@
+[Unit]
+Description=Starts and stops the Paradox IP150 Python script
+Documentation=https://github.com/Tertiush/ParadoxIP150v2
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+EnvironmentFile=/opt/paradoxip/config.ini
+User=openhab
+Group=openhab
+WorkingDirectory=/opt/paradoxip/
+PermissionsStartOnly=true
+ExecStart=/usr/bin/python /opt/paradoxip/IP150-MQTTv2.py
+# Shutdown delay in seconds, before process is tried to be killed with KILL (if configured)
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target
