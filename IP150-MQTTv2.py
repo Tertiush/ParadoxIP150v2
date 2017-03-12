@@ -8,8 +8,30 @@ import random
 import ConfigParser
 import struct
 import importlib
+import logging
 
 # Alarm controls can be given in payload, e.g. Paradox/C/P1, payl = Disarm
+################################################################################################
+#  Paradox IP Modile
+################################################################################################
+# Change History
+################################################################################################
+# 2017-03-11
+# - Longer delay on errors.
+#
+# 2017-03-02
+# - Added logging around connection retries
+# - Added time.sleep(5) on each failure
+#
+# 2017-02-26
+# - Changed print statementst to logging statement to generate a proper log file
+# - Added new config key words Topic_Publish_ZoneState and Topic_Publish_Partition
+# - Topic_Publish_ZoneState - that is called from TestEventMessages when a zone event is found, 
+#   froamt Paradox/Zone/<zone name> - where zone name is extracted from the event packet (chars 15 - 30)
+# - Topic_Publish_Partition - that is called from TestEventMessages when a partition 
+#   arm/disarm event is found
+###############################################################################################
+
 
 # Do not edit these variables here, use the config.ini file instead.
 Zone_Amount = 32
@@ -17,7 +39,7 @@ passw = "abcd"
 user = "1234"
 IP150_IP = "10.0.0.120"
 IP150_Port = 10000
-Poll_Speed = 0.5  # Seconds (float)
+Poll_Speed = 30.5  # Seconds (float)
 MQTT_IP = "10.0.0.130"
 MQTT_Port = 1883
 MQTT_KeepAlive = 60  # Seconds
@@ -30,6 +52,8 @@ Startup_Publish_All_Info = "True"
 Startup_Update_All_Labels = "True"
 Topic_Publish_Labels = "Paradox/Labels"
 Topic_Publish_AppState = "Paradox/State"
+Topic_Publish_ZoneState = "Paradox/Zone"
+Topic_Publish_ArmState = "Paradox/Partition"
 Alarm_Model = "ParadoxMG5050"
 Alarm_Registry_Map = "ParadoxMG5050"
 Alarm_Event_Map = "ParadoxMG5050"
@@ -47,7 +71,13 @@ Output_PControl_NewState = ""
 State_Machine = 0
 Polling_Enabled = 1
 Debug_Mode = 0
+Error_Delay = 30
 
+#Logging
+LOG_LEVEL = logging.INFO
+LOG_FILE = "/var/log/openhab/paradoxip.log"
+LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
+logging.basicConfig(filename=LOG_FILE, format=LOG_FORMAT, level=LOG_LEVEL)
 
 def ConfigSectionMap(section):
     dict1 = {}
@@ -56,15 +86,15 @@ def ConfigSectionMap(section):
         try:
             dict1[option] = Config.get(section, option)
             if dict1[option] == -1:
-                print ("skip: %s" % option)
+                logging.info("skip: %s" % option)
         except:
-            print("exception on %s!" % option)
+            logging.error("exception on %s!" % option)
             dict1[option] = None
     return dict1
 
 
 def on_connect(client, userdata, flags, rc):
-    print("Connected to MQTT broker with result code " + str(rc))
+    logging.info("Connected to MQTT broker with result code " + str(rc))
 
     # Subscribing in on_connect() means that if we lose the connection and
     # reconnect then subscriptions will be renewed.
@@ -86,7 +116,7 @@ def on_message(client, userdata, msg):
 
     valid_states = ['Arm', 'Disarm', 'Sleep', 'Stay']
 
-    print("MQTT Message: " + msg.topic + " " + str(msg.payload))
+    logging.info("MQTT Message: " + msg.topic + " " + str(msg.payload))
 
     topic = msg.topic
 
@@ -94,65 +124,65 @@ def on_message(client, userdata, msg):
     if Topic_Subscribe_Control in msg.topic:
         if "Polling" in msg.topic:
             if "Enable" in msg.topic:
-                print "Enable polling message received..."
+                logging.info("Enable polling message received...")
                 client.publish(Topic_Publish_AppState, "Polling: Enabling...", 0, True)
                 Polling_Enabled = 1
             if "Disable" in msg.topic:
-                print "Disable polling message received..."
+                logging.info("Disable polling message received...")
                 Polling_Enabled = 0
 
         elif "/FO/" in msg.topic:
             try:
                 Output_FControl_Number = int((topic.split(Topic_Subscribe_Control + 'FO/'))[1].split('/')[0])
-                print "Output force control number: ", Output_FControl_Number
+                logging.info("Output force control number: %s " % Output_FControl_Number)
                 try:
                     Output_FControl_NewState = (topic.split('/FO/' + str(Output_FControl_Number) + '/'))[1]
                 except Exception, e:
                     Output_FControl_NewState = msg.payload
                     if len(Output_FControl_NewState) < 1:
-                        print 'No payload given for control number: e.g. On'
-                print "Output force control state: ", Output_FControl_NewState
+                        logging.info('No payload given for control number: e.g. On')
+                logging.info("Output force control state: %s " % Output_FControl_NewState)
                 client.publish(Topic_Publish_AppState,
                                "Output: Forcing PGM " + str(Output_FControl_Number) + " to state: " + Output_FControl_NewState, 0, True)
                 Output_FControl_Action = 1
             except:
-                print "MQTT message received with incorrect structure"
+                logging.error("MQTT message received with incorrect structure")
 
         elif "/PO/" in msg.topic:
             try:
                 Output_PControl_Number = int((topic.split(Topic_Subscribe_Control + 'PO/'))[1].split('/')[0])
-                print "Output pulse control number: ", Output_PControl_Number
+                logging.info("Output pulse control number: %s " % Output_PControl_Number)
                 try:
                     Output_PControl_NewState = (topic.split('/PO/' + str(Output_PControl_Number) + '/'))[1]
                 except Exception, e:
                     Output_PControl_NewState = msg.payload
                     if len(Output_PControl_NewState) < 1:
-                        print 'No payload given for control number: e.g. On'
-                print "Output pulse control state: ", Output_PControl_NewState
+                        logging.error('No payload given for control number: e.g. On')
+                logging.info("Output pulse control state: %s" % Output_PControl_NewState)
                 client.publish(Topic_Publish_AppState,
                                "Output: Pulsing PGM " + str(Output_PControl_Number) + " to state: " + Output_PControl_NewState,
                                0, True)
                 Output_PControl_Action = 1
             except:
-                print "MQTT message received with incorrect structure"
+                logging.error("MQTT message received with incorrect structure")
         elif "/P" in msg.topic:
             try:
                 Alarm_Control_Partition = int((topic.split(Topic_Subscribe_Control + 'P'))[1].split('/')[0])
-                print "Alarm control partition: ", Alarm_Control_Partition
+                logging.info("Alarm control partition: %s" % Alarm_Control_Partition)
                 try:
                     Alarm_Control_NewState = (topic.split('/P' + str(Alarm_Control_Partition) + '/'))[1]
                 except Exception:
                     Alarm_Control_NewState = msg.payload
                     if len(Alarm_Control_NewState) < 1:
-                        print 'No payload given for alarm control: e.g. Disarm'
+                        logging.error('No payload given for alarm control: e.g. Disarm')
 
-                print "Alarm control state: ", Alarm_Control_NewState
+                logging.info("Alarm control state: %s" % Alarm_Control_NewState)
                 client.publish(Topic_Publish_AppState,
                                "Alarm: Control partition " + str(Alarm_Control_Partition) + " to state: " + Alarm_Control_NewState,
                                0, True)
                 Alarm_Control_Action = 1
             except:
-                print "MQTT message received with incorrect structure"
+                logging.error("MQTT message received with incorrect structure")
 
 
 def connect_ip150socket(address, port):
@@ -161,7 +191,7 @@ def connect_ip150socket(address, port):
         s.settimeout(2)
         s.connect((address, port))
     except Exception, e:
-        print "Error connecting to IP module (exiting): " + repr(e)
+        logging.error( "Error connecting to IP module (exiting): " + repr(e))
         client.publish(Topic_Publish_AppState,
                        "Error connecting to IP module (exiting): " + repr(e),
                        0, True)
@@ -196,20 +226,20 @@ class paradox:
             mod = __import__("ParadoxMap", fromlist=[self.alarmeventmap + "EventMap"])
             self.eventmap = getattr(mod, self.alarmeventmap + "EventMap")
         except Exception, e:
-            print "Failed to load Event Map: ", repr(e)
-            print "Defaulting to MG5050 Event Map..."
+            logging.error("Failed to load Event Map: %s " % repr(e))
+            logging.error("Defaulting to MG5050 Event Map...")
             try:
                 mod = __import__("ParadoxMap", fromlist=["ParadoxMG5050EventMap"])
                 self.eventmap = getattr(mod, "ParadoxMG5050EventMap")
             except Exception, e:
-                print "Failed to load Event Map (exiting): ", repr(e)
+                logging.error("Failed to load Event Map (exiting): %s" % repr(e))
                 sys.exit()
 
         try:
             mod = __import__("ParadoxMap", fromlist=[self.alarmregmap + "Registers"])
             self.registermap = getattr(mod, self.alarmregmap + "Registers")
         except Exception, e:
-            print "Failed to load Register Map (defaulting to not update labels from alarm): ", repr(e)
+            logging.error("Failed to load Register Map (defaulting to not update labels from alarm): %s" % repr(e))
             self.Skip_Update_Labels = 1
 
 
@@ -224,12 +254,12 @@ class paradox:
         self.eventmap.save()
 
     def loadState(self):
-        print "Loading previous event states and labels from file"
+        logging.info("Loading previous event states and labels from file")
         self.eventmap.load()
 
     def login(self, password, Debug_Mode=0):  # Construct the login message, 16 byte header +
         # 16byte [or multiple] payloading being the password
-        print "Logging into alarm system..."
+        logging.info("Logging into alarm system...")
 
         header = "\xaa"  # First construct the 16 byte header, starting with 0xaa
 
@@ -254,11 +284,11 @@ class paradox:
         reply = self.readDataRaw(header + message, Debug_Mode)  # Send message to the alarm panel and read the reply
 
         if reply[4] == '\x38':
-            print "Login to alarm panel successful"
+            logging.info("Login to alarm panel successful")
             loggedin = 1
         else:
             loggedin = 0
-            print "Login request unsuccessful, panel returned: " + " ".join(hex(ord(reply[4])))
+            logging.info("Login request unsuccessful, panel returned: " + " ".join(hex(ord(reply[4]))))
 
         header = list(header)
 
@@ -362,7 +392,7 @@ class paradox:
         for func in self.registermap.getsupportedItems():
 
             if Debug_Mode >= 2:
-                print "Reading from alarm: " + func
+                logging.debug("updateAllLabels: Reading from alarm: " + func)
 
             try:
 
@@ -372,7 +402,7 @@ class paradox:
                 total = sum(1 for x in register_dict if isinstance(x, int))
 
                 if Debug_Mode >= 2:
-                    print "Amount of numeric items in dictionary to read: " + str(total)
+                    logging.debug("updateAllLabels: Amount of numeric items in dictionary to read: " + str(total))
 
                 header = register_dict["Header"]
                 skip_next = 0
@@ -417,19 +447,21 @@ class paradox:
                 try:
                     completed_dict = getattr(self.eventmap, "getAll" + func)()
                     if Debug_Mode >= 1:
-                        print "Labels detected for " + func + ":"
-                        print completed_dict
+                        logging.info("Labels detected for " + func + ":")
+                        logging.info(completed_dict)
                 except Exception, e:
-                    print "Failed to load supported function's completed mappings after updating: ", repr(e)
+                    logging.error("Failed to load supported function's completed mappings after updating: %s" % repr(e))
 
                 if Startup_Publish_All_Info == "True":
                     topic = func.split("Label")[0]
+                    print topic
+                    logging.info("updateAllLabels:  Topic being published " + Topic_Publish_Labels + "/" + topic[0].upper() + topic[1:] + "s" + ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()))
                     client.publish(Topic_Publish_Labels + "/" + topic[0].upper() + topic[1:] + "s",
                                    ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()))
 
 
             except Exception, e:
-                print "Failed to load supported function's mapping: ", repr(e)
+                logging.error("Failed to load supported function's mapping: %s" % repr(e))
 
         return
 
@@ -438,38 +470,59 @@ class paradox:
         reply_amount, headers, messages = self.splitMessage(self.readDataRaw('', Debug_Mode))
 
         if Debug_Mode >= 1:
-            print '.'
+            logging.debug('.')
 
         reply = '.'
 
         if Debug_Mode >= 1 and reply_amount > 1:
-            print "Multiple data: " + repr(messages)
+            logging.debug("Multiple data: " + repr(messages))
 
         if reply_amount > 0:
             for message in messages:
 
                 if Debug_Mode >= 2:
-                    print "Event data: " + " ".join(hex(ord(i)) for i in message)
+                    logging.debug("Event data: " + " ".join(hex(ord(i)) for i in message))
 
                 if len(message) > 0:
                     if message[0] == '\xe2' or message[0] == '\xe0':
 
                         try:
-
+                            location = ""
                             if Events_Payload_Numeric == 0:
 
                                 event, subevent = self.eventmap.getEventDescription(ord(message[7]), ord(message[8]))
+                                location =  message[15:30].strip()
+                                if location:
+                                    logging.debug("Event: \"%s\"" % location)
+                                    print "Event: \"%s\"" % location
 
                                 reply = "Event:" + event + ";SubEvent:" + subevent
+
+                                print str(ord(message[7]))
+                                # zone status messages Paradox/Zone/ZoneName 0 for close, 1 for open
+                                if ord(message[7]) == 0:
+                                    logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "OFF"))
+                                    client.publish(Topic_Publish_ZoneState + "/" + location,"OFF", qos=0, retain=False)
+                                elif ord(message[7]) == 1:
+                                    logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "ON"))
+                                    client.publish(Topic_Publish_ZoneState + "/" + location,"ON", qos=0, retain=False)
+                                elif ord(message[7]) == 2 and ord(message[8]) == 11:   #Disarm
+                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "disarm"))
+                                    client.publish(Topic_Publish_ArmState ,"OFF", qos=0, retain=False)
+                                elif ord(message[7]) == 2 and ord(message[8]) == 12:   #arm
+                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
+                                    client.publish(Topic_Publish_ArmState ,"ON", qos=0, retain=False)
 
                             else:
 
                                 reply = "E:" + str(ord(message[7])) + ";SE:" + str(ord(message[8]))
+                                logging.info("Publishing event E\"%s\" for :SE %s " % (str(ord(message[7])), str(ord(message[8])) ) )
+
 
                             client.publish(Topic_Publish_Events, reply, qos=0, retain=False)
 
                             if Debug_Mode >= 1:
-                                print reply
+                                logging.debug(reply)
 
                         except ValueError:
                             reply = "No register entry for Event: " + str(ord(message[7])) + ", Sub-Event: " + str(
@@ -540,11 +593,11 @@ class paradox:
         while tries > 0:
             try:
                 if Debug_Mode >= 2:
-                    print str(len(request)) + "->   " + " ".join(hex(ord(i)) for i in request)
+                    logging.debug(str(len(request)) + "->   " + " ".join(hex(ord(i)) for i in request))
                 self.sendData(request)
                 inc_data = self.comms.recv(1024)
                 if Debug_Mode >= 2:
-                    print str(len(inc_data)) + "<-   " + " ".join(hex(ord(i)) for i in inc_data)
+                    logging.debug( str(len(inc_data)) + "<-   " + " ".join(hex(ord(i)) for i in inc_data))
                 tries = 0
 
             except socket.timeout, e:
@@ -556,19 +609,23 @@ class paradox:
                     # print 'Receive timed out, ret'
                     # continue
                 else:
-                    print "Error reading data from IP module, retrying again... (" + str(tries) + "): " + repr(e)
+                    logging.info("Error reading data from IP module, retrying again... (" + str(tries) + "): " + repr(e))
                     tries -= 1
-                    time.sleep(2)
+                    time.sleep(Error_Delay)
             except socket.error, e:
-                print "Unknown error on socket connection, retrying... ", repr(e)
+                logging.error("Unknown error on socket connection, retrying (%d) ... %s " % (tries, repr(e)))
                 tries -= 1
+                time.sleep(Error_Delay)
                 if tries == 0:
-                    print "Failure, disconnected."
+                    logging.info("Failure, disconnected.")
                     sys.exit(1)
             else:
                 if len(inc_data) == 0:
-                    print 'Socket connection closed by remote host'
-                    sys.exit(0)
+                    tries -= 1
+                    logging.info('Socket connection closed by remote host: ' + tries)
+                    if tries == 0:
+                        logging.info('Failure, disconnecting')
+                        sys.exit(0)
                 else:
                     return inc_data
 
@@ -590,7 +647,7 @@ class paradox:
         header = registers["Header"]
 
         if Debug_Mode >= 1:
-            print "Sending generic Output Control: Output: " + str(output) + ", State: " + state
+            logging.debug( "Sending generic Output Control: Output: " + str(output) + ", State: " + state)
 
         message = registers[output][state]
 
@@ -621,7 +678,7 @@ class paradox:
 
         header = registers["Header"]
 
-        print "Sending generic Alarm Control: Partition: " + str(partition) + ", State: " + state
+        logging.info("Sending generic Alarm Control: Partition: " + str(partition) + ", State: " + state)
 
         message = registers[partition][state]
 
@@ -673,7 +730,7 @@ class paradox:
     def walker(self, ):
         self.zoneTotal = Zone_Amount
 
-        print "Reading (" + str(Zone_Amount) + ") zone names..."
+        logging.info("Reading (" + str(Zone_Amount) + ") zone names...")
 
         header = "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee"
 
@@ -693,7 +750,7 @@ class paradox:
             # print " ".join(hex(ord(i)) for i in message)
             reply = self.readDataRaw(header + self.format37ByteMessage(message))
 
-            print reply
+            logging.info(reply)
             # print " ".join(hex(ord(i)) for i in reply)
 
             time.sleep(0.3)
@@ -711,7 +768,7 @@ if __name__ == '__main__':
         # -------------- Read Config file ----------------
         if State_Machine <= 0:
 
-            print "Reading config.ini file..."
+            logging.info("Reading config.ini file...")
 
             try:
 
@@ -737,13 +794,18 @@ if __name__ == '__main__':
                 Topic_Publish_Labels = Config.get("MQTT Topics", "Topic_Publish_Labels")
                 Topic_Publish_AppState = Config.get("MQTT Topics", "Topic_Publish_AppState")
                 Startup_Update_All_Labels = Config.get("Application", "Startup_Update_All_Labels")
+                Topic_Publish_ZoneState = Config.get("MQTT Topics", "Topic_Publish_ZoneState")
+                Topic_Publish_ArmState = Config.get("MQTT Topics", "Topic_Publish_ArmState")
                 Debug_Mode = int(Config.get("Application", "Debug_Mode"))
+                if Debug_Mode > 0:
+                   logging.info("Setting loglevel to debug")
+                   logging.getLogger().setLevel(logging.DEBUG)
 
-                print "config.ini file read successfully"
+                logging.info("config.ini file read successfully")
                 State_Machine += 1
 
             except Exception, e:
-                print "******************* Error reading config.ini file (will use defaults): " + repr(e)
+                logging.error("******************* Error reading config.ini file (will use defaults): %s" % repr(e))
                 State_Machine = 1
                 attempts = 3
         # -------------- MQTT ----------------
@@ -751,7 +813,7 @@ if __name__ == '__main__':
 
             try:
 
-                print "Attempting connection to MQTT Broker: " + MQTT_IP + ":" + str(MQTT_Port)
+                logging.info("Attempting connection to MQTT Broker: " + MQTT_IP + ":" + str(MQTT_Port))
                 client = mqtt.Client()
                 client.on_connect = on_connect
                 client.on_message = on_message
@@ -762,7 +824,7 @@ if __name__ == '__main__':
 
                 client.subscribe(Topic_Subscribe_Control + "#")
 
-                print "MQTT client subscribed to control messages on topic: " + Topic_Subscribe_Control + "#"
+                logging.info("MQTT client subscribed to control messages on topic: " + Topic_Subscribe_Control + "#")
 
                 client.publish(Topic_Publish_AppState,"State Machine 1, Connected to MQTT Broker",0,True)
 
@@ -770,14 +832,14 @@ if __name__ == '__main__':
 
             except Exception, e:
 
-                print "MQTT connection error (" + str(attempts) + ": " + repr(e)
+                logging.error( "MQTT connection error (" + str(attempts) + ": " + repr(e))
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
-                    print "Error within State_Machine: " + str(State_Machine) + ": " + repr(e)
+                    logging.error( "Error within State_Machine: " + str(State_Machine) + ": " + repr(e))
                     State_Machine -= 1
-                    print "Going to State_Machine: " + str(State_Machine)
+                    logging.error( "Going to State_Machine: " + str(State_Machine))
                     attempts = 3
 
         # -------------- Login to IP Module ----------------
@@ -795,7 +857,7 @@ if __name__ == '__main__':
                 myAlarm = paradox(comms, 0, 3, Alarm_Event_Map, Alarm_Registry_Map)
 
                 if not myAlarm.login(passw, Debug_Mode):
-                    print "Failed to login & unlock to IP module, check if another app is using the port. Retrying... "
+                    logging.info("Failed to login & unlock to IP module, check if another app is using the port. Retrying... ")
                     client.publish(Topic_Publish_AppState,
                                    "State Machine 2, Failed to login & unlock to IP module, check if another app is using the port. Retrying... ",
                                    0, True)
@@ -807,7 +869,7 @@ if __name__ == '__main__':
 
             except Exception, e:
 
-                print "Error attempting connection to IP module (" + str(attempts) + ": " + repr(e)
+                logging.error( "Error attempting connection to IP module (" + str(attempts) + ": " + repr(e))
                 client.publish(Topic_Publish_AppState,
                                "State Machine 2, Exception, retrying... (" + str(attempts) + ": " + repr(e),
                                0, True)
@@ -815,10 +877,10 @@ if __name__ == '__main__':
                 attempts -= 1
 
                 if attempts < 1:
-                    print "Error within State_Machine: " + str(State_Machine) + ": " + repr(e)
+                    logging.error("Error within State_Machine: " + str(State_Machine) + ": " + repr(e))
                     client.publish(Topic_Publish_AppState, "State Machine 2, Error, moving to previous state", 0, True)
                     State_Machine -= 1
-                    print "Going to State_Machine: " + str(State_Machine)
+                    logging.error("Going to State_Machine: " + str(State_Machine))
                     attempts = 3
         # -------------- Reading Labels ----------------
         elif State_Machine == 3 and Polling_Enabled == 1:
@@ -829,29 +891,29 @@ if __name__ == '__main__':
 
                     client.publish(Topic_Publish_AppState, "State Machine 3, Reading labels from alarm", 0, True)
 
-                    print "Updating all labels from alarm"
+                    logging.info("Updating all labels from alarm")
                     myAlarm.updateAllLabels(Startup_Publish_All_Info, Topic_Publish_Labels, Debug_Mode)
 
                     State_Machine += 1
-                    print "Listening for events..."
+                    logging.info("Listening for events...")
                     client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
                 else:
 
                     State_Machine += 1
-                    print "Listening for events..."
+                    logging.info("Listening for events...")
                     client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
             except Exception, e:
 
-                print "Error reading labels: " + repr(e)
+                logging.error("Error reading labels: %s " % repr(e))
                 client.publish(Topic_Publish_AppState, "State Machine 3, Exception: " + repr(e), 0, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
-                    print "Error within State_Machine: " + str(State_Machine) + ": " + repr(e)
+                    logging.error("Error within State_Machine: " + str(State_Machine) + ": " + repr(e))
                     client.publish(Topic_Publish_AppState, "State Machine 3, Error, moving to previous state", 0, True)
                     State_Machine -= 1
-                    print "Going to State_Machine: " + str(State_Machine)
+                    logging.error("Going to State_Machine: " + str(State_Machine))
 
             Alarm_Control_Action = 0
             attempts = 3
@@ -868,7 +930,7 @@ if __name__ == '__main__':
                     myAlarm.login(passw)
                     myAlarm.controlAlarm(Alarm_Control_Partition, Alarm_Control_NewState, Debug_Mode)
                     Alarm_Control_Action = 0
-                    print "Listening for events..."
+                    logging.info("Listening for events...")
                     client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
 
                 # Test for pending Force Output Control
@@ -876,7 +938,7 @@ if __name__ == '__main__':
                     myAlarm.login(passw)
                     myAlarm.controlPGM(Output_FControl_Number, Output_FControl_NewState, Debug_Mode)
                     Output_FControl_Action = 0
-                    print "Listening for events..."
+                    logging.info("Listening for events...")
                     client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
 
                 # Test for pending Pulse Output Control
@@ -890,36 +952,36 @@ if __name__ == '__main__':
                         myAlarm.controlPGM(Output_PControl_Number, "ON", Debug_Mode)
 
                     Output_PControl_Action = 0
-                    print "Listening for events..."
+                    logging.info("Listening for events...")
                     client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
 
                 time.sleep(Polling_Enabled)
-
+                #logging.info("Calling keepalive")
                 myAlarm.keepAlive(Debug_Mode)
 
             except Exception, e:
 
-                print "Error during normal poll: " + repr(e) + ", Attempt: " + str(attempts)
+                logging.error("Error during normal poll: " + repr(e) + ", Attempt: " + str(attempts))
                 client.publish(Topic_Publish_AppState, "State Machine 4, Exception: " + repr(e), 0, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
-                    print "Error within State_Machine: " + str(State_Machine) + ": " + repr(e)
+                    logging.error("Error within State_Machine: " + str(State_Machine) + ": " + repr(e))
                     State_Machine -= 1
-                    print "Going to State_Machine: " + str(State_Machine)
+                    logging.error("Going to State_Machine: " + str(State_Machine))
                     client.publish(Topic_Publish_AppState, "State Machine 4, Error, moving to previous state", 0, True)
                     attempts = 3
 
 
         elif Polling_Enabled == 0 and State_Machine <= 4:
 
-            print "Disabling polling & disconnecting from Alarm"
+            logging.info("Disabling polling & disconnecting from Alarm")
             client.publish(Topic_Publish_AppState, "Polling: Disabled", 0, True)
             comms.close()
             State_Machine = 10
 
-            print "Polling Disabled"
+            logging.info("Polling Disabled")
 
         elif Polling_Enabled == 1:
             State_Machine = 2
