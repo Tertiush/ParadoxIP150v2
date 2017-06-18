@@ -9,6 +9,7 @@ import ConfigParser
 import struct
 import importlib
 import logging
+import logging.handlers
 
 # Alarm controls can be given in payload, e.g. Paradox/C/P1, payl = Disarm
 ################################################################################################
@@ -77,7 +78,16 @@ Error_Delay = 30
 LOG_LEVEL = logging.INFO
 LOG_FILE = "/var/log/openhab/paradoxip.log"
 LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
-logging.basicConfig(filename=LOG_FILE, format=LOG_FORMAT, level=LOG_LEVEL)
+#logging.basicConfig(filename=LOG_FILE, format=LOG_FORMAT, level=LOG_LEVEL)
+
+logger = logging.getLogger()
+log_handler = logging.handlers.WatchedFileHandler(LOG_FILE)
+formatter = logging.Formatter(LOG_FORMAT)
+log_handler.setLevel(logging.DEBUG)
+log_handler.setFormatter(formatter)
+logger.addHandler(log_handler)
+logging.info("logging complete")
+logging.debug("logging complete")
 
 def ConfigSectionMap(section):
     dict1 = {}
@@ -187,11 +197,15 @@ def on_message(client, userdata, msg):
 
 def connect_ip150socket(address, port):
     try:
+        print "trying to connect %s" % address
+        logging.info("Connecting to %s" % address)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(2)
         s.connect((address, port))
+        print "connected"
     except Exception, e:
         logging.error( "Error connecting to IP module (exiting): " + repr(e))
+        print "error connecting"
         client.publish(Topic_Publish_AppState,
                        "Error connecting to IP module (exiting): " + repr(e),
                        0, True)
@@ -212,7 +226,7 @@ class paradox:
     partitionName = None
     Skip_Update_Labels = 0
 
-    def __init__(self, _transport, _encrypted=0, _retries=3, _alarmeventmap="ParadoxMG5050",
+    def __init__(self, _transport, _encrypted=0, _retries=10, _alarmeventmap="ParadoxMG5050",
                  _alarmregmap="ParadoxMG5050"):
         self.comms = _transport  # instance variable unique to each instance
         self.retries = _retries
@@ -469,8 +483,8 @@ class paradox:
 
         reply_amount, headers, messages = self.splitMessage(self.readDataRaw('', Debug_Mode))
 
-        if Debug_Mode >= 1:
-            logging.debug('.')
+        #if Debug_Mode >= 1:
+        #    logging.debug('.')
 
         reply = '.'
 
@@ -478,6 +492,10 @@ class paradox:
             logging.debug("Multiple data: " + repr(messages))
 
         if reply_amount > 0:
+            if self.retries < 10:
+                logging.info("Setting retries back to 3 after a couple of errors")
+                self.retries = 10
+
             for message in messages:
 
                 if Debug_Mode >= 2:
@@ -603,15 +621,20 @@ class paradox:
             except socket.timeout, e:
                 err = e.args[0]
                 if err == 'timed out':
+                    #logging.error("Timed out error, no retry -<-- could fix this" + repr(e))
+                    #this seems to be where it goes normally while waiting for traffic.
                     tries = 0
+                    sys.exc_clear()
                     return ''
                     # sleep(1)
                     # print 'Receive timed out, ret'
                     # continue
                 else:
-                    logging.info("Error reading data from IP module, retrying again... (" + str(tries) + "): " + repr(e))
+                    logging.error("Error reading data from IP module, retrying again... (" + str(tries) + "): " + repr(e))
                     tries -= 1
                     time.sleep(Error_Delay)
+                    sys.exc_clear()
+                    pass
             except socket.error, e:
                 logging.error("Unknown error on socket connection, retrying (%d) ... %s " % (tries, repr(e)))
                 tries -= 1
@@ -619,12 +642,18 @@ class paradox:
                 if tries == 0:
                     logging.info("Failure, disconnected.")
                     sys.exit(1)
+                else:
+                    logging.error("After error, continuing %d attempts left" % tries)
+                    sys.exc_clear()
+                    return ''
+                    pass
             else:
                 if len(inc_data) == 0:
                     tries -= 1
                     logging.info('Socket connection closed by remote host: ' + tries)
+                    time.sleep(Error_Delay)
                     if tries == 0:
-                        logging.info('Failure, disconnecting')
+                        logging.error('Failure, disconnecting')
                         sys.exit(0)
                 else:
                     return inc_data
@@ -762,13 +791,24 @@ if __name__ == '__main__':
 
     State_Machine = 0
     attempts = 3
+    print "logging to file %s" % LOG_FILE
+    logger = logging.getLogger()
+    log_handler2 = logging.StreamHandler()
+    log_handler2.setLevel(logging.DEBUG)
+    logger.setLevel(logging.DEBUG)
+    log_handler2.setFormatter(formatter)
+    logger.addHandler(log_handler2)
+    logger.addHandler(log_handler)
+    logger.info("logging complete")
+    logger.error("test")
 
     while True:
 
         # -------------- Read Config file ----------------
         if State_Machine <= 0:
-
+            print "reading  config"
             logging.info("Reading config.ini file...")
+            logger.info("Reading config.ini file...")
 
             try:
 
@@ -799,13 +839,15 @@ if __name__ == '__main__':
                 Debug_Mode = int(Config.get("Application", "Debug_Mode"))
                 if Debug_Mode > 0:
                    logging.info("Setting loglevel to debug")
-                   logging.getLogger().setLevel(logging.DEBUG)
+                   logging.debug("Logging Set to debug")
+                   logging.info("logging set to debug") 
 
-                logging.info("config.ini file read successfully")
+                logging.info("config.ini file read successfully: %d" % Debug_Mode)
+                print "config read"
                 State_Machine += 1
 
             except Exception, e:
-                logging.error("******************* Error reading config.ini file (will use defaults): %s" % repr(e))
+                logging.error("******************* Error reading config.ini file (will use defaults): %s" % e)
                 State_Machine = 1
                 attempts = 3
         # -------------- MQTT ----------------
@@ -832,12 +874,12 @@ if __name__ == '__main__':
 
             except Exception, e:
 
-                logging.error( "MQTT connection error (" + str(attempts) + ": " + repr(e))
+                logging.error( "MQTT connection error (" + str(attempts) + ": " + e.strerror)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
-                    logging.error( "Error within State_Machine: " + str(State_Machine) + ": " + repr(e))
+                    logging.error( "Error within State_Machine: {0}: {1}".format(State_Machine,e.strerror))
                     State_Machine -= 1
                     logging.error( "Going to State_Machine: " + str(State_Machine))
                     attempts = 3
@@ -869,10 +911,9 @@ if __name__ == '__main__':
 
             except Exception, e:
 
-                logging.error( "Error attempting connection to IP module (" + str(attempts) + ": " + repr(e))
+                logging.error( "Error attempting connection to IP module ({0}): {1}".format(attempts, e))
                 client.publish(Topic_Publish_AppState,
-                               "State Machine 2, Exception, retrying... (" + str(attempts) + ": " + repr(e),
-                               0, True)
+                               "State Machine 2, Exception, retrying... ({0}): {1}".format(attempts, e),0, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
@@ -905,12 +946,12 @@ if __name__ == '__main__':
             except Exception, e:
 
                 logging.error("Error reading labels: %s " % repr(e))
-                client.publish(Topic_Publish_AppState, "State Machine 3, Exception: " + repr(e), 0, True)
+                client.publish(Topic_Publish_AppState, "State Machine 3, Exception: {0}".format(e.strerror), 0, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
-                    logging.error("Error within State_Machine: " + str(State_Machine) + ": " + repr(e))
+                    logging.error("Error within State_Machine: {0}: {1}".format(State_Machine, e.strerror))
                     client.publish(Topic_Publish_AppState, "State Machine 3, Error, moving to previous state", 0, True)
                     State_Machine -= 1
                     logging.error("Going to State_Machine: " + str(State_Machine))
@@ -961,17 +1002,19 @@ if __name__ == '__main__':
 
             except Exception, e:
 
-                logging.error("Error during normal poll: " + repr(e) + ", Attempt: " + str(attempts))
-                client.publish(Topic_Publish_AppState, "State Machine 4, Exception: " + repr(e), 0, True)
+                logging.error("Error during normal poll: {0}, Attemp: {1}".format(e.strerror,attempts))
+                client.publish(Topic_Publish_AppState, "State Machine 4, Exception: {0}".format(e.strerror), 0, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
-                    logging.error("Error within State_Machine: " + str(State_Machine) + ": " + repr(e))
+                    logging.error("Error within State_Machine: {0}: {1}".format(str(State_Machine), e.strerror))
                     State_Machine -= 1
                     logging.error("Going to State_Machine: " + str(State_Machine))
                     client.publish(Topic_Publish_AppState, "State Machine 4, Error, moving to previous state", 0, True)
                     attempts = 3
+                logging.error("Passing on the error")
+                continue
 
 
         elif Polling_Enabled == 0 and State_Machine <= 4:
