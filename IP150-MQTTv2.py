@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import socket
 import time
 import lib.client as mqtt
@@ -646,11 +646,11 @@ class paradox:
                     logging.error("After error, continuing %d attempts left" % tries)
                     sys.exc_clear()
                     return ''
-                    pass
+                    continue
             else:
                 if len(inc_data) == 0:
                     tries -= 1
-                    logging.info('Socket connection closed by remote host: ' + tries)
+                    logging.info('Socket connection closed by remote host: %d' % tries)
                     time.sleep(Error_Delay)
                     if tries == 0:
                         logging.error('Failure, disconnecting')
@@ -801,8 +801,13 @@ if __name__ == '__main__':
     logger.addHandler(log_handler)
     logger.info("logging complete")
     logger.error("test")
+    speciallogging = False
 
     while True:
+
+        if speciallogging:
+            print "Special logging after errorsstate %d" % State_Machine
+            logging.info("Special logging after errors state %d" % State_Machine)
 
         # -------------- Read Config file ----------------
         if State_Machine <= 0:
@@ -855,7 +860,10 @@ if __name__ == '__main__':
 
             try:
 
-                logging.info("Attempting connection to MQTT Broker: " + MQTT_IP + ":" + str(MQTT_Port))
+                if speciallogging:
+                    logging.info("State machine 1: starting client again")
+
+                logging.info("State01:Attempting connection to MQTT Broker: " + MQTT_IP + ":" + str(MQTT_Port))
                 client = mqtt.Client()
                 client.on_connect = on_connect
                 client.on_message = on_message
@@ -866,7 +874,7 @@ if __name__ == '__main__':
 
                 client.subscribe(Topic_Subscribe_Control + "#")
 
-                logging.info("MQTT client subscribed to control messages on topic: " + Topic_Subscribe_Control + "#")
+                logging.info("State01:MQTT client subscribed to control messages on topic: " + Topic_Subscribe_Control + "#")
 
                 client.publish(Topic_Publish_AppState,"State Machine 1, Connected to MQTT Broker",0,True)
 
@@ -879,16 +887,19 @@ if __name__ == '__main__':
                 attempts -= 1
 
                 if attempts < 1:
-                    logging.error( "Error within State_Machine: {0}: {1}".format(State_Machine,e.strerror))
+                    logging.error( "State01:Error within State_Machine: {0}: {1}".format(State_Machine,e.strerror))
                     State_Machine -= 1
-                    logging.error( "Going to State_Machine: " + str(State_Machine))
+                    logging.error( "State01:Going to State_Machine: " + str(State_Machine))
                     attempts = 3
 
         # -------------- Login to IP Module ----------------
         elif State_Machine == 2 and Polling_Enabled == 1:
 
             try:
+                if speciallogging:
+                    logging.info("State machine 2 + polling: starting calarm communication again")
 
+                logging.info("State02:Connecting to IP Module")
                 client.publish(Topic_Publish_AppState, "State Machine 2, Connecting to IP Module...", 0, True)
 
                 comms = connect_ip150socket(IP150_IP, IP150_Port)
@@ -899,7 +910,7 @@ if __name__ == '__main__':
                 myAlarm = paradox(comms, 0, 3, Alarm_Event_Map, Alarm_Registry_Map)
 
                 if not myAlarm.login(passw, Debug_Mode):
-                    logging.info("Failed to login & unlock to IP module, check if another app is using the port. Retrying... ")
+                    logging.info("State02:Failed to login & unlock to IP module, check if another app is using the port. Retrying... ")
                     client.publish(Topic_Publish_AppState,
                                    "State Machine 2, Failed to login & unlock to IP module, check if another app is using the port. Retrying... ",
                                    0, True)
@@ -907,18 +918,20 @@ if __name__ == '__main__':
                     time.sleep(Poll_Speed * 20)
                 else:
                     client.publish(Topic_Publish_AppState, "State Machine 2, Logged into IP Module successfully", 0, True)
+                    logging.info("State02: Logged into IP modeule successfully")
                     State_Machine += 1
+                    speciallogging = False
 
             except Exception, e:
 
-                logging.error( "Error attempting connection to IP module ({0}): {1}".format(attempts, e))
+                logging.error( "State02:Error attempting connection to IP module ({0}): {1}".format(attempts, e))
                 client.publish(Topic_Publish_AppState,
                                "State Machine 2, Exception, retrying... ({0}): {1}".format(attempts, e),0, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
-                    logging.error("Error within State_Machine: " + str(State_Machine) + ": " + repr(e))
+                    logging.error("State02:Error within State_Machine: " + str(State_Machine) + ": " + repr(e))
                     client.publish(Topic_Publish_AppState, "State Machine 2, Error, moving to previous state", 0, True)
                     State_Machine -= 1
                     logging.error("Going to State_Machine: " + str(State_Machine))
@@ -927,34 +940,36 @@ if __name__ == '__main__':
         elif State_Machine == 3 and Polling_Enabled == 1:
 
             try:
+                if speciallogging:
+                    logging.info("State03: Polling enabled: Special logging")
 
                 if Startup_Update_All_Labels == "True" and myAlarm.skipLabelUpdate() == 0:
-
+                    logging.info("State03: Preading labels")
                     client.publish(Topic_Publish_AppState, "State Machine 3, Reading labels from alarm", 0, True)
 
-                    logging.info("Updating all labels from alarm")
+                    logging.info("State03:Updating all labels from alarm")
                     myAlarm.updateAllLabels(Startup_Publish_All_Info, Topic_Publish_Labels, Debug_Mode)
 
                     State_Machine += 1
-                    logging.info("Listening for events...")
+                    logging.info("State03:Listening for events...")
                     client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
                 else:
 
                     State_Machine += 1
-                    logging.info("Listening for events...")
+                    logging.info("State03:Listening for events...")
                     client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
             except Exception, e:
 
-                logging.error("Error reading labels: %s " % repr(e))
+                logging.error("State03:Error reading labels: %s " % repr(e))
                 client.publish(Topic_Publish_AppState, "State Machine 3, Exception: {0}".format(e.strerror), 0, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
-                    logging.error("Error within State_Machine: {0}: {1}".format(State_Machine, e.strerror))
+                    logging.error("State03:Error within State_Machine: {0}: {1}".format(State_Machine, e.strerror))
                     client.publish(Topic_Publish_AppState, "State Machine 3, Error, moving to previous state", 0, True)
                     State_Machine -= 1
-                    logging.error("Going to State_Machine: " + str(State_Machine))
+                    logging.error("State03:Going to State_Machine: " + str(State_Machine))
 
             Alarm_Control_Action = 0
             attempts = 3
@@ -962,28 +977,33 @@ if __name__ == '__main__':
         elif State_Machine == 4 and Polling_Enabled == 1:
 
             try:
+                if speciallogging:
+                    logging.info("State04: Special logging (polling enabled)")
 
                 # Test for new events & publish to broker
                 myAlarm.testForEvents(Events_Payload_Numeric, Debug_Mode)
 
                 # Test for pending Alarm Control
                 if Alarm_Control_Action == 1:
+                    logging.info("State04: Alarm Control Action: Alarm loging and starting events")
                     myAlarm.login(passw)
                     myAlarm.controlAlarm(Alarm_Control_Partition, Alarm_Control_NewState, Debug_Mode)
                     Alarm_Control_Action = 0
-                    logging.info("Listening for events...")
+                    logging.info("State04:Listening for events...")
                     client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
 
                 # Test for pending Force Output Control
                 if Output_FControl_Action == 1:
+                    logging.info("State04:OutputFControl_Action: Loging and listenting")
                     myAlarm.login(passw)
                     myAlarm.controlPGM(Output_FControl_Number, Output_FControl_NewState, Debug_Mode)
                     Output_FControl_Action = 0
-                    logging.info("Listening for events...")
+                    logging.info("State04:Listening for events...")
                     client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
 
                 # Test for pending Pulse Output Control
                 if Output_PControl_Action == 1:
+                    logging.info("State04:OutputPControl_Action:Loging and listenting")
                     myAlarm.login(passw)
                     myAlarm.controlPGM(Output_PControl_Number, Output_PControl_NewState, Debug_Mode)
                     time.sleep(0.5)
@@ -993,7 +1013,7 @@ if __name__ == '__main__':
                         myAlarm.controlPGM(Output_PControl_Number, "ON", Debug_Mode)
 
                     Output_PControl_Action = 0
-                    logging.info("Listening for events...")
+                    logging.info("State04:Listening for events...")
                     client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
 
                 time.sleep(Polling_Enabled)
@@ -1002,33 +1022,37 @@ if __name__ == '__main__':
 
             except Exception, e:
 
-                logging.error("Error during normal poll: {0}, Attemp: {1}".format(e.strerror,attempts))
-                client.publish(Topic_Publish_AppState, "State Machine 4, Exception: {0}".format(e.strerror), 0, True)
+                logging.error("State04:Error during normal poll: {0}, Attemp: {1}".format(e.message,attempts))
+                client.publish(Topic_Publish_AppState, "State Machine 4, Exception: {0}".format(e.message), 0, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
+                logging.error("State04:Setting state machine to 1, hoping it will try to login to panal again.")
+                State_Machine = 1
 
                 if attempts < 1:
-                    logging.error("Error within State_Machine: {0}: {1}".format(str(State_Machine), e.strerror))
+                    logging.error("State04:Error within State_Machine: {0}: {1}".format(str(State_Machine), e.message))
                     State_Machine -= 1
-                    logging.error("Going to State_Machine: " + str(State_Machine))
+                    logging.error("State04:Going to State_Machine: " + str(State_Machine))
                     client.publish(Topic_Publish_AppState, "State Machine 4, Error, moving to previous state", 0, True)
                     attempts = 3
-                logging.error("Passing on the error")
+                logging.error("State04:Passing on the error: " + str(State_Machine))
+                speciallogging = True
                 continue
 
 
         elif Polling_Enabled == 0 and State_Machine <= 4:
 
-            logging.info("Disabling polling & disconnecting from Alarm")
+            logging.info("State04:Disabling polling & disconnecting from Alarm")
             client.publish(Topic_Publish_AppState, "Polling: Disabled", 0, True)
             comms.close()
             State_Machine = 10
 
-            logging.info("Polling Disabled")
+            logging.info("State04:Polling Disabled")
 
         elif Polling_Enabled == 1:
+            logging.info("Polling enabled false, setting statement 2")
             State_Machine = 2
 
         elif State_Machine == 10:
-
+            logging.info("State10: Sleep")
             time.sleep(3)
