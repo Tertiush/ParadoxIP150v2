@@ -76,18 +76,11 @@ Error_Delay = 30
 
 #Logging
 LOG_LEVEL = logging.INFO
-LOG_FILE = "/var/log/openhab/paradoxip.log"
+LOG_FILE = "/var/log/paradoxip.log"
 LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
 #logging.basicConfig(filename=LOG_FILE, format=LOG_FORMAT, level=LOG_LEVEL)
 
 logger = logging.getLogger()
-log_handler = logging.handlers.WatchedFileHandler(LOG_FILE)
-formatter = logging.Formatter(LOG_FORMAT)
-log_handler.setLevel(logging.DEBUG)
-log_handler.setFormatter(formatter)
-logger.addHandler(log_handler)
-logging.info("logging complete")
-logging.debug("logging complete")
 
 def ConfigSectionMap(section):
     dict1 = {}
@@ -792,15 +785,6 @@ if __name__ == '__main__':
     State_Machine = 0
     attempts = 3
     print "logging to file %s" % LOG_FILE
-    logger = logging.getLogger()
-    log_handler2 = logging.StreamHandler()
-    log_handler2.setLevel(logging.DEBUG)
-    logger.setLevel(logging.DEBUG)
-    log_handler2.setFormatter(formatter)
-    logger.addHandler(log_handler2)
-    logger.addHandler(log_handler)
-    logger.info("logging complete")
-    logger.error("test")
     speciallogging = False
 
     while True:
@@ -819,6 +803,25 @@ if __name__ == '__main__':
 
                 Config = ConfigParser.ConfigParser()
                 Config.read("config.ini")
+                LOG_FILE = Config.get("Application","Log_File")
+                log_handler = logging.handlers.WatchedFileHandler(LOG_FILE)
+                formatter = logging.Formatter(LOG_FORMAT)
+                log_handler.setLevel(logging.DEBUG)
+                log_handler.setFormatter(formatter)
+                logging.info("logging complete")
+                logging.debug("logging complete")
+
+                #logger = logging.getLogger()
+                log_handler2 = logging.StreamHandler()
+                log_handler2.setLevel(logging.DEBUG)
+                logger.setLevel(logging.DEBUG)
+                log_handler2.setFormatter(formatter)
+                logger.addHandler(log_handler2)
+                logger.addHandler(log_handler)
+                logger.info("logging complete")
+                logger.error("test")
+
+
                 Alarm_Model = Config.get("Alarm", "Alarm_Model")
                 Alarm_Registry_Map = Config.get("Alarm", "Alarm_Registry_Map")
                 Alarm_Event_Map = Config.get("Alarm", "Alarm_Event_Map")

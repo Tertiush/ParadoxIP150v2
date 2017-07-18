@@ -15,6 +15,8 @@ Confirmed supported systems: See the [wiki](../../wiki) (please let me know if y
 3.  Copy the config-master.ini to config.ini file and edit to configure.
 4.  Run the script: Python IP150-MQTTv2.py
 
+NOTE: as at July-2017, there is not a configuration item for the location of the log directory.  See this in the config.
+
 
 ## What happens in the background:
 The main script will connect to you IP module's software port (usually port 10000) and login with your password. It will then use two seperate classes (containing dictionaries) referenced in from the ParadoxMap.py file to extract different info from the alarm and translate events into meaningfull text. The dictionaries currently supports the MG5050 V4 firmware but could evolve over time if the community adds more alarm types to the dictionaries.
