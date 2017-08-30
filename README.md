@@ -112,6 +112,8 @@ Once the script has settled to listen for events, the following topics are avail
   * Payload (example): State Machine 4, Listening for events...
   * Payload (example): Output: Forcing PGM 1 to state: On
 
+### 3rd Party Connections
+This script will listen for 3rd party IP connections and if detected will disconnect for a period configured in the config.ini file. After the period has lapsed, the script will attempt to reconnect. This is useful if you still want to use web/smartphone apps. Note that it takes about 20 seconds to disconnect after which you can try to connect to the alarm again.
 
 ## Running as a service / daemon
 
