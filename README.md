@@ -117,6 +117,6 @@ This script will listen for 3rd party (Web-only, not software port) IP connectio
 
 If you want to run this as a daemon on Linux, 
  1. Copy the paradoxip.service file to /usr/lib/systemd/system (where mine is)
- 2. Run sudo systemctl daemon-reload
- 3. Then you should be able to start the service with sudi service paradoxip start
+ 2. Run: sudo systemctl daemon-reload
+ 3. Then you should be able to start the service with : sudo systemctl start paradoxip.service
 
