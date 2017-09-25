@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import socket
 import time
 import lib.client as mqtt
@@ -44,6 +44,8 @@ Poll_Speed = 30.5  # Seconds (float)
 MQTT_IP = "10.0.0.130"
 MQTT_Port = 1883
 MQTT_KeepAlive = 60  # Seconds
+mqtt_username = None
+mqtt_password = None
 
 # Options are Arm, Disarm, Stay, Sleep (case sensitive!)
 Topic_Publish_Events = "Paradox/Events"
@@ -55,6 +57,7 @@ Topic_Publish_Labels = "Paradox/Labels"
 Topic_Publish_AppState = "Paradox/State"
 Topic_Publish_ZoneState = "Paradox/Zone"
 Topic_Publish_ArmState = "Paradox/Partition"
+Publish_Static_Topic = 0
 Alarm_Model = "ParadoxMG5050"
 Alarm_Registry_Map = "ParadoxMG5050"
 Alarm_Event_Map = "ParadoxMG5050"
@@ -472,9 +475,10 @@ class paradox:
 
         return
 
-    def testForEvents(self, Events_Payload_Numeric=0, Debug_Mode=0):
+    def testForEvents(self, Events_Payload_Numeric=0, Publish_Static_Topic=0, Debug_Mode=0):
 
         reply_amount, headers, messages = self.splitMessage(self.readDataRaw('', Debug_Mode))
+        interrupt = 0  # Signal 3rd party connection interrupt
 
         #if Debug_Mode >= 1:
         #    logging.debug('.')
@@ -502,7 +506,7 @@ class paradox:
                             if Events_Payload_Numeric == 0:
 
                                 event, subevent = self.eventmap.getEventDescription(ord(message[7]), ord(message[8]))
-                                location =  message[15:30].strip()
+                                location = message[15:30].strip()
                                 if location:
                                     logging.debug("Event: \"%s\"" % location)
                                     print "Event: \"%s\"" % location
@@ -524,11 +528,13 @@ class paradox:
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
                                     client.publish(Topic_Publish_ArmState ,"ON", qos=0, retain=False)
 
-                            else:
+                            if Events_Payload_Numeric == 1:
 
                                 reply = "E:" + str(ord(message[7])) + ";SE:" + str(ord(message[8]))
                                 logging.info("Publishing event E\"%s\" for :SE %s " % (str(ord(message[7])), str(ord(message[8])) ) )
 
+                            if Publish_Static_Topic == "1":
+                                client.publish(Topic_Publish_Events + "/" + str(ord(message[7])) + "/" + str(ord(message[8])), qos=0, retain=False)
 
                             client.publish(Topic_Publish_Events, reply, qos=0, retain=False)
 
@@ -539,12 +545,12 @@ class paradox:
                             reply = "No register entry for Event: " + str(ord(message[7])) + ", Sub-Event: " + str(
                                 ord(message[8]))
 
+                    elif message[0] == '\x75' and message[1] == '\x49':
+                        interrupt = 1;
                     else:
                         reply = "Unknown event: " + " ".join(hex(ord(i)) for i in message)
 
-
-
-        return reply
+        return interrupt
 
     def splitMessage(self, request=''):  # FIXME: Make msg a list to handle multiple 37byte replies
 
@@ -727,11 +733,13 @@ class paradox:
 
         return
 
-    def disconnect(self, Debug_Mode=0):
+    def disconnect(self, Debug_Mode=2):
 
-        header = "\xaa\x00\x00\x03\x51\xff\x00\x0e\x00\x01\xee\xee\xee\xee\xee\xee"
+        # header = "\xaa\x00\x00\x03\x51\xff\x00\x0e\x00\x01\xee\xee\xee\xee\xee\xee"
+        header = "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee"
+        message = "\x70\x00\x05"
 
-        self.readDataRaw(header, Debug_Mode)
+        self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
 
     def keepAlive(self, Debug_Mode=0):
 
@@ -786,6 +794,8 @@ if __name__ == '__main__':
     attempts = 3
     print "logging to file %s" % LOG_FILE
     speciallogging = False
+    interruptCountdown = 0
+    interrupt = 0
 
     while True:
 
@@ -834,6 +844,8 @@ if __name__ == '__main__':
                 IP150_Port = int(Config.get("IP150", "IP_Software_Port"))
                 MQTT_IP = Config.get("MQTT Broker", "IP")
                 MQTT_Port = int(Config.get("MQTT Broker", "Port"))
+                mqtt_username = Config.get("MQTT Broker", "Mqtt_Username")
+                mqtt_password = Config.get("MQTT Broker", "Mqtt_Password")
 
                 Topic_Publish_Events = Config.get("MQTT Topics", "Topic_Publish_Events")
                 Events_Payload_Numeric = int(Config.get("MQTT Topics", "Events_Payload_Numeric"))
@@ -844,7 +856,11 @@ if __name__ == '__main__':
                 Startup_Update_All_Labels = Config.get("Application", "Startup_Update_All_Labels")
                 Topic_Publish_ZoneState = Config.get("MQTT Topics", "Topic_Publish_ZoneState")
                 Topic_Publish_ArmState = Config.get("MQTT Topics", "Topic_Publish_ArmState")
+                Publish_Static_Topic = Config.get("MQTT Topics", "Publish_Static_Topic")
                 Debug_Mode = int(Config.get("Application", "Debug_Mode"))
+                Auto_Logoff = Config.get("Application", "Auto_Logoff")
+                Logoff_Delay = int(Config.get("Application", "Logoff_Delay"))
+
                 if Debug_Mode > 0:
                    logging.info("Setting loglevel to debug")
                    logging.debug("Logging Set to debug")
@@ -868,6 +884,15 @@ if __name__ == '__main__':
 
                 logging.info("State01:Attempting connection to MQTT Broker: " + MQTT_IP + ":" + str(MQTT_Port))
                 client = mqtt.Client()
+
+                if mqtt_password == '':
+                    mqtt_password = None
+
+                if mqtt_username != '':
+                    client.username_pw_set(mqtt_username, mqtt_password)
+
+
+
                 client.on_connect = on_connect
                 client.on_message = on_message
 
@@ -984,7 +1009,13 @@ if __name__ == '__main__':
                     logging.info("State04: Special logging (polling enabled)")
 
                 # Test for new events & publish to broker
-                myAlarm.testForEvents(Events_Payload_Numeric, Debug_Mode)
+                interrupt = myAlarm.testForEvents(Events_Payload_Numeric, Publish_Static_Topic, Debug_Mode)
+
+                if interrupt == 1:
+                    interruptCountdown = Logoff_Delay
+                    State_Machine = 20
+                    interrupt = 0
+
 
                 # Test for pending Alarm Control
                 if Alarm_Control_Action == 1:
@@ -1052,10 +1083,23 @@ if __name__ == '__main__':
 
             logging.info("State04:Polling Disabled")
 
-        elif Polling_Enabled == 1:
+        elif Polling_Enabled == 1 and State_Machine <= 4:
             logging.info("Polling enabled false, setting statement 2")
             State_Machine = 2
 
         elif State_Machine == 10:
             logging.info("State10: Sleep")
             time.sleep(3)
+
+        elif State_Machine == 20:
+            logging.info("State20: 3rd Party interrupted")
+            myAlarm.disconnect()
+            comms.shutdown(1)
+            comms.close()
+
+            for x in range(0, interruptCountdown):
+                if x % 5 == 0:
+                    logging.info("Delay remaining: " + str(interruptCountdown - x) + " seconds")
+                time.sleep(1)
+
+            State_Machine = 2
