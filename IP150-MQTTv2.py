@@ -216,7 +216,7 @@ class paradox:
     alarmName = None
     zoneTotal = 0
     zoneStatus = ['']
-    zoneNames = ['']
+    zoneNames = {}
     zonePartition = None
     partitionStatus = None
     partitionName = None
@@ -464,7 +464,8 @@ class paradox:
 
                 if Startup_Publish_All_Info == "True":
                     topic = func.split("Label")[0]
-                    print topic
+                    if topic[0].upper() + topic[1:] + "s" == "Zones":
+                      self.zoneNames = completed_dict
                     logging.info("updateAllLabels:  Topic being published " + Topic_Publish_Labels + "/" + topic[0].upper() + topic[1:] + "s" + ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()))
                     client.publish(Topic_Publish_Labels + "/" + topic[0].upper() + topic[1:] + "s",
                                    ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()), 1, True)
