@@ -397,6 +397,34 @@ class paradox:
 
         return message
 
+    # Implementation inspired by https://github.com/bioego/Paradox-UWP
+    def updateZoneAndAlarmStatus(self, Startup_Publish_All_Info="True", Debug_Mode=0):
+        header = "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee"
+        message = "\x50\x00\x80"
+        message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        message += "\x00\xd0\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee"
+        reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+        if len(reply) < 39:
+          print "Response without zone status"
+          return
+        # Skip to zone status
+        reply = reply[25:]
+        reply = reply[10:] # skip date, time and voltages
+        for x in range(4):
+          data = ord(reply[x])
+          for y in range(8):
+            bit = data & 1
+            data = data / 2
+            itemNo = x * 8 + y + 1
+            if itemNo in self.zoneNames.keys():
+              location = self.zoneNames[itemNo]
+              if len(location) > 0:
+                zoneState = "ON" if bit else "OFF"
+                print "Publishing initial zone state (state:" + zoneState + ", zone:" + location + ")"
+                client.publish_with_timestamp(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
+        time.sleep(0.3)
+        return
+
     def updateAllLabels(self, Startup_Publish_All_Info="True", Topic_Publish_Labels="True", Debug_Mode=0):
 
         for func in self.registermap.getsupportedItems():
@@ -978,6 +1006,9 @@ if __name__ == '__main__':
 
                     logging.info("State03:Updating all labels from alarm")
                     myAlarm.updateAllLabels(Startup_Publish_All_Info, Topic_Publish_Labels, Debug_Mode)
+
+                    logging.info("State03:Updating zone and alarm status")
+                    myAlarm.updateZoneAndAlarmStatus(Startup_Publish_All_Info, Debug_Mode)
 
                     State_Machine += 1
                     logging.info("State03:Listening for events...")
