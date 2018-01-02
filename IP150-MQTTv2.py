@@ -131,7 +131,7 @@ def on_message(client, userdata, msg):
         if "Polling" in msg.topic:
             if "Enable" in msg.topic:
                 logging.info("Enable polling message received...")
-                client.publish(Topic_Publish_AppState, "Polling: Enabling...", 0, True)
+                client.publish(Topic_Publish_AppState, "Polling: Enabling...", 1, True)
                 Polling_Enabled = 1
             if "Disable" in msg.topic:
                 logging.info("Disable polling message received...")
@@ -149,7 +149,7 @@ def on_message(client, userdata, msg):
                         logging.info('No payload given for control number: e.g. On')
                 logging.info("Output force control state: %s " % Output_FControl_NewState)
                 client.publish(Topic_Publish_AppState,
-                               "Output: Forcing PGM " + str(Output_FControl_Number) + " to state: " + Output_FControl_NewState, 0, True)
+                               "Output: Forcing PGM " + str(Output_FControl_Number) + " to state: " + Output_FControl_NewState, 1, True)
                 Output_FControl_Action = 1
             except:
                 logging.error("MQTT message received with incorrect structure")
@@ -167,7 +167,7 @@ def on_message(client, userdata, msg):
                 logging.info("Output pulse control state: %s" % Output_PControl_NewState)
                 client.publish(Topic_Publish_AppState,
                                "Output: Pulsing PGM " + str(Output_PControl_Number) + " to state: " + Output_PControl_NewState,
-                               0, True)
+                               1, True)
                 Output_PControl_Action = 1
             except:
                 logging.error("MQTT message received with incorrect structure")
@@ -185,7 +185,7 @@ def on_message(client, userdata, msg):
                 logging.info("Alarm control state: %s" % Alarm_Control_NewState)
                 client.publish(Topic_Publish_AppState,
                                "Alarm: Control partition " + str(Alarm_Control_Partition) + " to state: " + Alarm_Control_NewState,
-                               0, True)
+                               1, True)
                 Alarm_Control_Action = 1
             except:
                 logging.error("MQTT message received with incorrect structure")
@@ -204,7 +204,7 @@ def connect_ip150socket(address, port):
         print "error connecting"
         client.publish(Topic_Publish_AppState,
                        "Error connecting to IP module (exiting): " + repr(e),
-                       0, True)
+                       1, True)
         sys.exit()
 
     return s
@@ -467,7 +467,7 @@ class paradox:
                     print topic
                     logging.info("updateAllLabels:  Topic being published " + Topic_Publish_Labels + "/" + topic[0].upper() + topic[1:] + "s" + ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()))
                     client.publish(Topic_Publish_Labels + "/" + topic[0].upper() + topic[1:] + "s",
-                                   ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()))
+                                   ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()), 1)
 
 
             except Exception, e:
@@ -517,16 +517,16 @@ class paradox:
                                 # zone status messages Paradox/Zone/ZoneName 0 for close, 1 for open
                                 if ord(message[7]) == 0:
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "OFF"))
-                                    client.publish(Topic_Publish_ZoneState + "/" + location,"OFF", qos=0, retain=False)
+                                    client.publish(Topic_Publish_ZoneState + "/" + location,"OFF", qos=1, retain=False)
                                 elif ord(message[7]) == 1:
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "ON"))
-                                    client.publish(Topic_Publish_ZoneState + "/" + location,"ON", qos=0, retain=False)
+                                    client.publish(Topic_Publish_ZoneState + "/" + location,"ON", qos=1, retain=False)
                                 elif ord(message[7]) == 2 and ord(message[8]) == 11:   #Disarm
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "disarm"))
-                                    client.publish(Topic_Publish_ArmState ,"OFF", qos=0, retain=False)
+                                    client.publish(Topic_Publish_ArmState ,"OFF", qos=1, retain=False)
                                 elif ord(message[7]) == 2 and ord(message[8]) == 12:   #arm
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
-                                    client.publish(Topic_Publish_ArmState ,"ON", qos=0, retain=False)
+                                    client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=False)
 
                             if Events_Payload_Numeric == 1:
 
@@ -534,7 +534,7 @@ class paradox:
                                 logging.info("Publishing event E\"%s\" for :SE %s " % (str(ord(message[7])), str(ord(message[8])) ) )
 
                             if Publish_Static_Topic == "1":
-                                client.publish(Topic_Publish_Events + "/" + str(ord(message[7])) + "/" + str(ord(message[8])), qos=0, retain=False)
+                                client.publish(Topic_Publish_Events + "/" + str(ord(message[7])) + "/" + str(ord(message[8])), qos=1, retain=False)
 
                             client.publish(Topic_Publish_Events, reply, qos=0, retain=False)
 
@@ -904,7 +904,7 @@ if __name__ == '__main__':
 
                 logging.info("State01:MQTT client subscribed to control messages on topic: " + Topic_Subscribe_Control + "#")
 
-                client.publish(Topic_Publish_AppState,"State Machine 1, Connected to MQTT Broker",0,True)
+                client.publish(Topic_Publish_AppState,"State Machine 1, Connected to MQTT Broker",1,True)
 
                 State_Machine += 1
 
@@ -928,12 +928,12 @@ if __name__ == '__main__':
                     logging.info("State machine 2 + polling: starting calarm communication again")
 
                 logging.info("State02:Connecting to IP Module")
-                client.publish(Topic_Publish_AppState, "State Machine 2, Connecting to IP Module...", 0, True)
+                client.publish(Topic_Publish_AppState, "State Machine 2, Connecting to IP Module...", 1, True)
 
                 comms = connect_ip150socket(IP150_IP, IP150_Port)
                 client.publish(Topic_Publish_AppState,
                                "State Machine 2, Connected to IP Module, unlocking...",
-                               0, True)
+                               1, True)
 
                 myAlarm = paradox(comms, 0, 3, Alarm_Event_Map, Alarm_Registry_Map)
 
@@ -941,11 +941,11 @@ if __name__ == '__main__':
                     logging.info("State02:Failed to login & unlock to IP module, check if another app is using the port. Retrying... ")
                     client.publish(Topic_Publish_AppState,
                                    "State Machine 2, Failed to login & unlock to IP module, check if another app is using the port. Retrying... ",
-                                   0, True)
+                                   1, True)
                     comms.close()
                     time.sleep(Poll_Speed * 20)
                 else:
-                    client.publish(Topic_Publish_AppState, "State Machine 2, Logged into IP Module successfully", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 2, Logged into IP Module successfully", 1, True)
                     logging.info("State02: Logged into IP modeule successfully")
                     State_Machine += 1
                     speciallogging = False
@@ -954,13 +954,13 @@ if __name__ == '__main__':
 
                 logging.error( "State02:Error attempting connection to IP module ({0}): {1}".format(attempts, e))
                 client.publish(Topic_Publish_AppState,
-                               "State Machine 2, Exception, retrying... ({0}): {1}".format(attempts, e),0, True)
+                               "State Machine 2, Exception, retrying... ({0}): {1}".format(attempts, e),1, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
                     logging.error("State02:Error within State_Machine: " + str(State_Machine) + ": " + repr(e))
-                    client.publish(Topic_Publish_AppState, "State Machine 2, Error, moving to previous state", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 2, Error, moving to previous state", 1, True)
                     State_Machine -= 1
                     logging.error("Going to State_Machine: " + str(State_Machine))
                     attempts = 3
@@ -973,29 +973,29 @@ if __name__ == '__main__':
 
                 if Startup_Update_All_Labels == "True" and myAlarm.skipLabelUpdate() == 0:
                     logging.info("State03: Preading labels")
-                    client.publish(Topic_Publish_AppState, "State Machine 3, Reading labels from alarm", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 3, Reading labels from alarm", 1, True)
 
                     logging.info("State03:Updating all labels from alarm")
                     myAlarm.updateAllLabels(Startup_Publish_All_Info, Topic_Publish_Labels, Debug_Mode)
 
                     State_Machine += 1
                     logging.info("State03:Listening for events...")
-                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 1, True)
                 else:
 
                     State_Machine += 1
                     logging.info("State03:Listening for events...")
-                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 1, True)
             except Exception, e:
 
                 logging.error("State03:Error reading labels: %s " % repr(e))
-                client.publish(Topic_Publish_AppState, "State Machine 3, Exception: {0}".format(e.strerror), 0, True)
+                client.publish(Topic_Publish_AppState, "State Machine 3, Exception: {0}".format(e.strerror), 1, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
                     logging.error("State03:Error within State_Machine: {0}: {1}".format(State_Machine, e.strerror))
-                    client.publish(Topic_Publish_AppState, "State Machine 3, Error, moving to previous state", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 3, Error, moving to previous state", 1, True)
                     State_Machine -= 1
                     logging.error("State03:Going to State_Machine: " + str(State_Machine))
 
@@ -1024,7 +1024,7 @@ if __name__ == '__main__':
                     myAlarm.controlAlarm(Alarm_Control_Partition, Alarm_Control_NewState, Debug_Mode)
                     Alarm_Control_Action = 0
                     logging.info("State04:Listening for events...")
-                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 1, True)
 
                 # Test for pending Force Output Control
                 if Output_FControl_Action == 1:
@@ -1033,7 +1033,7 @@ if __name__ == '__main__':
                     myAlarm.controlPGM(Output_FControl_Number, Output_FControl_NewState, Debug_Mode)
                     Output_FControl_Action = 0
                     logging.info("State04:Listening for events...")
-                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 1, True)
 
                 # Test for pending Pulse Output Control
                 if Output_PControl_Action == 1:
@@ -1048,7 +1048,7 @@ if __name__ == '__main__':
 
                     Output_PControl_Action = 0
                     logging.info("State04:Listening for events...")
-                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 1, True)
 
                 time.sleep(Polling_Enabled)
                 #logging.info("Calling keepalive")
@@ -1057,7 +1057,7 @@ if __name__ == '__main__':
             except Exception, e:
 
                 logging.error("State04:Error during normal poll: {0}, Attemp: {1}".format(e.message,attempts))
-                client.publish(Topic_Publish_AppState, "State Machine 4, Exception: {0}".format(e.message), 0, True)
+                client.publish(Topic_Publish_AppState, "State Machine 4, Exception: {0}".format(e.message), 1, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
                 logging.error("State04:Setting state machine to 1, hoping it will try to login to panal again.")
@@ -1067,7 +1067,7 @@ if __name__ == '__main__':
                     logging.error("State04:Error within State_Machine: {0}: {1}".format(str(State_Machine), e.message))
                     State_Machine -= 1
                     logging.error("State04:Going to State_Machine: " + str(State_Machine))
-                    client.publish(Topic_Publish_AppState, "State Machine 4, Error, moving to previous state", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Error, moving to previous state", 1, True)
                     attempts = 3
                 logging.error("State04:Passing on the error: " + str(State_Machine))
                 speciallogging = True
@@ -1077,7 +1077,7 @@ if __name__ == '__main__':
         elif Polling_Enabled == 0 and State_Machine <= 4:
 
             logging.info("State04:Disabling polling & disconnecting from Alarm")
-            client.publish(Topic_Publish_AppState, "Polling: Disabled", 0, True)
+            client.publish(Topic_Publish_AppState, "Polling: Disabled", 1, True)
             comms.close()
             State_Machine = 10
 
