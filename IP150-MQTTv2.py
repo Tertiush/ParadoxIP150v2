@@ -518,16 +518,16 @@ class paradox:
                                 # zone status messages Paradox/Zone/ZoneName 0 for close, 1 for open
                                 if ord(message[7]) == 0:
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "OFF"))
-                                    client.publish(Topic_Publish_ZoneState + "/" + location,"OFF", qos=1, retain=True)
+                                    client.publish_with_timestamp(Topic_Publish_ZoneState + "/" + location,"OFF", qos=1, retain=True)
                                 elif ord(message[7]) == 1:
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "ON"))
-                                    client.publish(Topic_Publish_ZoneState + "/" + location,"ON", qos=1, retain=True)
+                                    client.publish_with_timestamp(Topic_Publish_ZoneState + "/" + location,"ON", qos=1, retain=True)
                                 elif ord(message[7]) == 2 and ord(message[8]) == 11:   #Disarm
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "disarm"))
-                                    client.publish(Topic_Publish_ArmState ,"OFF", qos=1, retain=True)
+                                    client.publish_with_timestamp(Topic_Publish_ArmState ,"OFF", qos=1, retain=True)
                                 elif ord(message[7]) == 2 and ord(message[8]) == 12:   #arm
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
-                                    client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
+                                    client.publish_with_timestamp(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
 
                             if Events_Payload_Numeric == 1:
 
@@ -535,7 +535,7 @@ class paradox:
                                 logging.info("Publishing event E\"%s\" for :SE %s " % (str(ord(message[7])), str(ord(message[8])) ) )
 
                             if Publish_Static_Topic == "1":
-                                client.publish(Topic_Publish_Events + "/" + str(ord(message[7])) + "/" + str(ord(message[8])), qos=1, retain=False)
+                                client.publish_with_timestamp(Topic_Publish_Events + "/" + str(ord(message[7])) + "/" + str(ord(message[8])), qos=1, retain=False)
 
                             client.publish(Topic_Publish_Events, reply, qos=0, retain=False)
 

@@ -830,6 +830,10 @@ class Client(object):
 
         return self.loop_misc()
 
+    def publish_with_timestamp(self, topic, payload="?", qos=0, retain=False):
+        payload = payload + " " + str(int(time.time()))
+        self.publish(topic, payload, qos, retain)
+
     def publish(self, topic, payload=None, qos=0, retain=False):
         """Publish a message on a topic.
 
