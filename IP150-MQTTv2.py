@@ -423,6 +423,19 @@ class paradox:
                 print "Publishing initial zone state (state:" + zoneState + ", zone:" + location + ")"
                 client.publish_with_timestamp(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
         time.sleep(0.3)
+        message =  "\x50\x00\x80\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd1\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee"
+        reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+        if len(reply) < 34:
+          print "Response without zone status"
+          return
+        # Skip to alarm status
+        reply = reply[33:]
+        alarmState = ord(reply[0])
+        alarmState = "ON" if (alarmState & 1) else "OFF"
+        print "Publishing initial alarm state (state:" + alarmState + ")"
+        client.publish_with_timestamp(Topic_Publish_ArmState, alarmState, qos=1, retain=True)
+        time.sleep(0.3)
         return
 
     def updateAllLabels(self, Startup_Publish_All_Info="True", Topic_Publish_Labels="True", Debug_Mode=0):
