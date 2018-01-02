@@ -467,7 +467,7 @@ class paradox:
                     print topic
                     logging.info("updateAllLabels:  Topic being published " + Topic_Publish_Labels + "/" + topic[0].upper() + topic[1:] + "s" + ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()))
                     client.publish(Topic_Publish_Labels + "/" + topic[0].upper() + topic[1:] + "s",
-                                   ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()), 1)
+                                   ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()), 1, True)
 
 
             except Exception, e:
@@ -517,16 +517,16 @@ class paradox:
                                 # zone status messages Paradox/Zone/ZoneName 0 for close, 1 for open
                                 if ord(message[7]) == 0:
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "OFF"))
-                                    client.publish(Topic_Publish_ZoneState + "/" + location,"OFF", qos=1, retain=False)
+                                    client.publish(Topic_Publish_ZoneState + "/" + location,"OFF", qos=1, retain=True)
                                 elif ord(message[7]) == 1:
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "ON"))
-                                    client.publish(Topic_Publish_ZoneState + "/" + location,"ON", qos=1, retain=False)
+                                    client.publish(Topic_Publish_ZoneState + "/" + location,"ON", qos=1, retain=True)
                                 elif ord(message[7]) == 2 and ord(message[8]) == 11:   #Disarm
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "disarm"))
-                                    client.publish(Topic_Publish_ArmState ,"OFF", qos=1, retain=False)
+                                    client.publish(Topic_Publish_ArmState ,"OFF", qos=1, retain=True)
                                 elif ord(message[7]) == 2 and ord(message[8]) == 12:   #arm
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
-                                    client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=False)
+                                    client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
 
                             if Events_Payload_Numeric == 1:
 
