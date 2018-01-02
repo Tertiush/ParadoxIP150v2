@@ -506,7 +506,7 @@ class paradox:
                             if Events_Payload_Numeric == 0:
 
                                 event, subevent = self.eventmap.getEventDescription(ord(message[7]), ord(message[8]))
-                                location = message[15:30].strip()
+                                location = message[15:30].strip().translate(None, '\x00')
                                 if location:
                                     logging.debug("Event: \"%s\"" % location)
                                     print "Event: \"%s\"" % location
